@@ -6,7 +6,7 @@ import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signO
 // Lista de e-mails autorizados
 const ADMIN_EMAILS = [
     "welingtonhopka@gmail.com",
-    "email_do_socio@gmail.com",
+    "gi.abertoni@gmail.com@gmail.com",
     "email_do_rh@gmail.com"
 ];
 
