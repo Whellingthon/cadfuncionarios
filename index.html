@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atualização de Prontuário</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a5f' },
+                        accent: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d' },
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .slide-in { animation: slideIn 0.35s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        .pulse-save { animation: pulseSave 0.6s ease-in-out; }
+        @keyframes pulseSave { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+        input[type="file"]::file-selector-button {
+            background: #2563eb; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 500; margin-right: 10px; transition: background 0.2s;
+        }
+        input[type="file"]::file-selector-button:hover { background: #1d4ed8; }
+        .scroll-smooth { scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100 min-h-screen scroll-smooth">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-6 right-6 z-50 hidden">
+        <div id="toast-inner" class="flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl text-white font-medium text-sm backdrop-blur-sm transition-all duration-300 transform translate-x-full">
+            <i data-lucide="check-circle" class="w-5 h-5" id="toast-icon"></i>
+            <span id="toast-msg"></span>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-40 hidden flex items-center justify-center">
+        <div class="flex flex-col items-center gap-4">
+            <div class="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+            <p class="text-primary-700 font-semibold text-lg">Salvando prontuário...</p>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-4 py-6 sm:py-10">
+
+        <!-- Header -->
+        <header class="text-center mb-8 fade-in">
+            <div class="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider uppercase mb-4">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                Sistema Seguro
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-800 tracking-tight">Atualização de Prontuário</h1>
+            <p class="text-slate-500 mt-2 text-sm sm:text-base">Gerencie os dados funcionais de forma rápida e segura</p>
+        </header>
+
+        <!-- Login Area -->
+        <div id="area-login" class="fade-in">
+            <div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 p-8 sm:p-12 text-center border border-slate-100">
+                <div class="w-20 h-20 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-red-200">
+                    <svg class="w-10 h-10 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                    </svg>
+                </div>
+                <h2 class="text-xl font-bold text-slate-800 mb-2">Acesso ao Sistema</h2>
+                <p class="text-slate-500 mb-8 max-w-md mx-auto text-sm leading-relaxed">Para preencher o prontuário, faça login com seu e-mail corporativo e mantenha seus dados atualizados.</p>
+                <button id="btn-login" class="inline-flex items-center gap-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-8 py-3.5 rounded-xl font-semibold shadow-lg shadow-red-200/50 hover:shadow-red-300/50 transition-all duration-300 hover:-translate-y-0.5 text-base">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#fff"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#fff"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#fff"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#fff"/>
+                    </svg>
+                    Entrar com Google
+                </button>
+            </div>
+        </div>
+
+        <!-- Form Area -->
+        <div id="area-formulario" class="hidden">
+            <!-- User Info Bar -->
+            <div class="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200 px-5 py-3.5 mb-6 flex items-center justify-between sticky top-0 z-30 shadow-sm fade-in">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 bg-primary-100 rounded-full flex items-center justify-center">
+                        <i data-lucide="user" class="w-4.5 h-4.5 text-primary-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 font-medium">Preenchido por</p>
+                        <p class="text-sm font-bold text-slate-700" id="nome-usuario"></p>
+                    </div>
+                </div>
+                <button id="btn-logout" class="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50" title="Sair">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- Progress Indicator -->
+            <div class="flex items-center gap-2 mb-6 text-xs font-medium text-slate-400">
+                <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+                <span>Progresso do preenchimento</span>
+                <div class="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden ml-2">
+                    <div id="progress-bar" class="h-full bg-gradient-to-r from-primary-500 to-accent-500 rounded-full transition-all duration-500" style="width:0%"></div>
+                </div>
+                <span id="progress-text" class="text-primary-600 font-bold">0%</span>
+            </div>
+
+            <!-- Section 1: Dados Pessoais -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="user-circle" class="w-5 h-5 text-primary-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Dados Pessoais</h3>
+                        <p class="text-xs text-slate-400">Informações básicas do funcionário</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Nome Completo</label>
+                        <input type="text" id="nome" class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white" placeholder="Nome completo">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">NIF</label>
+                        <input type="text" id="nif" class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white" placeholder="Número de Identificação">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Endereço (Rua/Nº/CEP)</label>
+                    <input type="text" id="endereco" class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white" placeholder="Rua, número, CEP">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Telefone</label>
+                        <input type="text" id="telefone" class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white" placeholder="(00) 00000-0000">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Email Particular</label>
+                        <input type="email" id="email_particular" class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white" placeholder="email@exemplo.com">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Estado Civil</label>
+                        <select id="estado_civil" class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white appearance-none cursor-pointer">
+                            <option value="">Selecione...</option>
+                            <option value="Solteiro(a)">Solteiro(a)</option>
+                            <option value="Casado(a)">Casado(a)</option>
+                            <option value="Divorciado(a)">Divorciado(a)</option>
+                            <option value="Viúvo(a)">Viúvo(a)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Filhos</label>
+                        <div class="flex items-center gap-4 py-2">
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <input type="radio" name="tem_filhos" value="nao" checked onchange="toggleFilhos()" class="w-4 h-4 text-primary-600 border-slate-300 focus:ring-primary-500">
+                                <span class="text-sm text-slate-600 group-hover:text-primary-600 transition-colors">Não</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <input type="radio" name="tem_filhos" value="sim" onchange="toggleFilhos()" class="w-4 h-4 text-primary-600 border-slate-300 focus:ring-primary-500">
+                                <span class="text-sm text-slate-600 group-hover:text-primary-600 transition-colors">Sim</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="area_filhos" class="hidden mt-4 bg-primary-50/50 border border-primary-100 rounded-xl p-5 slide-in">
+                    <div class="flex items-center gap-2 mb-3">
+                        <i data-lucide="baby" class="w-4 h-4 text-primary-500"></i>
+                        <span class="text-xs font-bold text-primary-700 uppercase tracking-wider">Dados do Filho(a)</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Nome do Filho(a)</label>
+                            <input type="text" id="nome_filho" class="w-full px-4 py-2.5 rounded-lg border border-primary-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-white" placeholder="Nome completo">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Data de Nascimento</label>
+                            <input type="date" id="nascimento_filho" class="w-full px-4 py-2.5 rounded-lg border border-primary-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-white">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+           <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="school" class="w-5 h-5 text-amber-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Escolaridade Básica</h3>
+                        <p class="text-xs text-slate-400">Ensino médio e cursos técnicos</p>
+                    </div>
+                </div>
+                
+                <div class="mb-5">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Ensino Médio concluído em</label>
+                    <input type="number" id="ano_medio" class="w-full sm:w-1/2 px-4 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white" placeholder="Ano (Ex: 2010)">
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-100 pt-5">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Curso Técnico em</label>
+                        <input type="text" id="curso_tecnico" class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white" placeholder="Ex: Desenvolvimento de Sistemas">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Concluído em</label>
+                        <input type="number" id="ano_tecnico" class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white" placeholder="Ano">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3: Graduação -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="graduation-cap" class="w-5 h-5 text-violet-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Graduação</h3>
+                        <p class="text-xs text-slate-400">Licenciatura, Bacharelado ou Tecnólogo</p>
+                    </div>
+                </div>
+                <div id="lista-graduacoes"></div>
+                <button class="btn-add inline-flex items-center gap-2 text-sm font-semibold text-accent-600 hover:text-accent-700 bg-accent-50 hover:bg-accent-100 px-4 py-2.5 rounded-lg transition-all duration-200 mt-2" type="button" onclick="addGraduacao()">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    Adicionar Graduação
+                </button>
+            </section>
+
+            <!-- Section 4: Pós-Graduação -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="award" class="w-5 h-5 text-indigo-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Pós-Graduação</h3>
+                        <p class="text-xs text-slate-400">Especialização, MBA, Mestrado ou Doutorado</p>
+                    </div>
+                </div>
+                <div id="lista-pos"></div>
+                <button class="btn-add inline-flex items-center gap-2 text-sm font-semibold text-accent-600 hover:text-accent-700 bg-accent-50 hover:bg-accent-100 px-4 py-2.5 rounded-lg transition-all duration-200 mt-2" type="button" onclick="addPos()">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    Adicionar Pós
+                </button>
+            </section>
+
+            <!-- Section 5: SENAI -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="wrench" class="w-5 h-5 text-orange-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">SENAI</h3>
+                        <p class="text-xs text-slate-400">CAI, Técnico ou FIC</p>
+                    </div>
+                </div>
+                <div id="lista-senai"></div>
+                <button class="btn-add inline-flex items-center gap-2 text-sm font-semibold text-accent-600 hover:text-accent-700 bg-accent-50 hover:bg-accent-100 px-4 py-2.5 rounded-lg transition-all duration-200 mt-2" type="button" onclick="addSenai()">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    Adicionar SENAI
+                </button>
+            </section>
+
+            <!-- Section 6: Cursos Profissionalizantes -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="book-open" class="w-5 h-5 text-teal-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Cursos Profissionalizantes</h3>
+                        <p class="text-xs text-slate-400">Idiomas, Informática e Outros</p>
+                    </div>
+                </div>
+                <div id="lista-cursos"></div>
+                <button class="btn-add inline-flex items-center gap-2 text-sm font-semibold text-accent-600 hover:text-accent-700 bg-accent-50 hover:bg-accent-100 px-4 py-2.5 rounded-lg transition-all duration-200 mt-2" type="button" onclick="addCurso()">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    Adicionar Curso
+                </button>
+            </section>
+
+            <!-- Section 7: Documentos Pessoais -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="file-text" class="w-5 h-5 text-rose-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Documentos Pessoais</h3>
+                        <p class="text-xs text-slate-400">Upload de RG, CPF, CNH e outros</p>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mb-5 flex items-center gap-1.5">
+                    <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                    Faça o upload dos arquivos (PDF, JPG, PNG)
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="bg-slate-50 rounded-xl border border-dashed border-slate-200 p-4 hover:border-primary-300 hover:bg-primary-50/30 transition-all">
+                        <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">1. RG</label>
+                        <input type="file" id="file_rg" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:text-xs file:font-semibold">
+                    </div>
+                    <div class="bg-slate-50 rounded-xl border border-dashed border-slate-200 p-4 hover:border-primary-300 hover:bg-primary-50/30 transition-all">
+                        <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">2. CPF</label>
+                        <input type="file" id="file_cpf" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:text-xs file:font-semibold">
+                    </div>
+                    <div class="bg-slate-50 rounded-xl border border-dashed border-slate-200 p-4 hover:border-primary-300 hover:bg-primary-50/30 transition-all">
+                        <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">3. CNH</label>
+                        <input type="file" id="file_cnh" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:text-xs file:font-semibold">
+                    </div>
+                    <div class="bg-slate-50 rounded-xl border border-dashed border-slate-200 p-4 hover:border-primary-300 hover:bg-primary-50/30 transition-all">
+                        <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">4. CTPS</label>
+                        <input type="file" id="file_ctps" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:text-xs file:font-semibold">
+                    </div>
+                    <div class="bg-slate-50 rounded-xl border border-dashed border-slate-200 p-4 hover:border-primary-300 hover:bg-primary-50/30 transition-all">
+                        <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">5. Certificado de Reservista</label>
+                        <input type="file" id="file_reservista" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:text-xs file:font-semibold">
+                    </div>
+                    <div class="bg-slate-50 rounded-xl border border-dashed border-slate-200 p-4 hover:border-primary-300 hover:bg-primary-50/30 transition-all">
+                        <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">6. Cartão SUS</label>
+                        <input type="file" id="file_sus" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:text-xs file:font-semibold">
+                    </div>
+                    <div class="bg-slate-50 rounded-xl border border-dashed border-slate-200 p-4 hover:border-primary-300 hover:bg-primary-50/30 transition-all">
+                        <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">7. Certidão Nascimento/Casamento</label>
+                        <input type="file" id="file_certidao" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:text-xs file:font-semibold">
+                    </div>
+                    <div id="upload_filhos" class="hidden bg-primary-50 rounded-xl border border-dashed border-primary-200 p-4 hover:border-primary-400 transition-all">
+                        <label class="block text-xs font-bold text-primary-700 mb-2 uppercase tracking-wider">8. Filhos (Certidão/RG/CPF)</label>
+                        <input type="file" id="file_filhos" accept=".pdf,.jpg,.jpeg,.png" multiple class="w-full text-xs text-primary-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:text-xs file:font-semibold file:bg-primary-600 file:hover:bg-primary-700">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 8: Anexos de Escolaridade -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="folder-open" class="w-5 h-5 text-sky-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Anexos de Escolaridade</h3>
+                        <p class="text-xs text-slate-400">Diplomas e certificados</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="bg-slate-50 rounded-xl border border-dashed border-slate-200 p-4 hover:border-sky-300 hover:bg-sky-50/30 transition-all">
+                        <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">9. Escolaridade (Médio / Graduação / Pós)</label>
+                        <input type="file" id="file_diplomas" accept=".pdf,.jpg,.jpeg,.png" multiple class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:text-xs file:font-semibold">
+                    </div>
+                    <div class="bg-slate-50 rounded-xl border border-dashed border-slate-200 p-4 hover:border-sky-300 hover:bg-sky-50/30 transition-all">
+                        <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">10. Certificados (Informática / Idiomas / Outros)</label>
+                        <input type="file" id="file_certificados" accept=".pdf,.jpg,.jpeg,.png" multiple class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:text-xs file:font-semibold">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Save Button -->
+            <button id="btn-salvar" class="w-full bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 text-white font-bold text-lg py-4 rounded-2xl shadow-lg shadow-accent-200/50 hover:shadow-accent-300/50 transition-all duration-300 hover:-translate-y-0.5 flex items-center justify-center gap-3 mb-8">
+                <i data-lucide="save" class="w-5 h-5"></i>
+                Salvar Prontuário Completo
+            </button>
+
+            <!-- Footer -->
+            <footer class="text-center pb-6">
+                <p class="text-xs text-slate-400">Prontuário Digital &bull; Dados protegidos e armazenados com segurança</p>
+            </footer>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCgDbwdOmhyFe4HflcYcOaEX8LXrF3k1U0",
+            authDomain: "cadfuncionario-13bac.firebaseapp.com",
+            projectId: "cadfuncionario-13bac",
+            storageBucket: "cadfuncionario-13bac.firebasestorage.app",
+            messagingSenderId: "392240312410",
+            appId: "1:392240312410:web:0d9b28dbc4017154d32863",
+            measurementId: "G-90G0FMKM1F"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+        let usuarioLogado = null;
+
+        // Toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const inner = document.getElementById('toast-inner');
+            const msg = document.getElementById('toast-msg');
+            const icon = document.getElementById('toast-icon');
+
+            msg.textContent = message;
+            inner.className = 'flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl text-white font-medium text-sm transition-all duration-300 transform';
+
+            if (type === 'success') {
+                inner.classList.add('bg-gradient-to-r', 'from-accent-500', 'to-accent-600');
+                icon.setAttribute('data-lucide', 'check-circle');
+            } else if (type === 'error') {
+                inner.classList.add('bg-gradient-to-r', 'from-red-500', 'to-red-600');
+                icon.setAttribute('data-lucide', 'alert-circle');
+            } else {
+                inner.classList.add('bg-gradient-to-r', 'from-primary-500', 'to-primary-600');
+                icon.setAttribute('data-lucide', 'info');
+            }
+
+            lucide.createIcons();
+            toast.classList.remove('hidden');
+            inner.classList.remove('translate-x-full');
+
+            setTimeout(() => {
+                inner.classList.add('translate-x-full');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 3500);
+        }
+
+        // Update progress bar
+        function updateProgress() {
+            const fields = ['nome', 'nif', 'endereco', 'telefone', 'email_particular', 'estado_civil', 'ano_medio'];
+            let filled = 0;
+            fields.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.value.trim() !== '') filled++;
+            });
+            // Also count radio for filhos
+            const filhosVal = document.querySelector('input[name="tem_filhos"]:checked');
+            if (filhosVal) filled++;
+
+            const pct = Math.round((filled / (fields.length + 1)) * 100);
+            document.getElementById('progress-bar').style.width = pct + '%';
+            document.getElementById('progress-text').textContent = pct + '%';
+        }
+
+        // Attach progress listeners
+        ['nome', 'nif', 'endereco', 'telefone', 'email_particular', 'estado_civil', 'ano_medio'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', updateProgress);
+        });
+        document.querySelectorAll('input[name="tem_filhos"]').forEach(r => r.addEventListener('change', updateProgress));
+
+        // Login
+        document.getElementById('btn-login').addEventListener('click', () => {
+            signInWithPopup(auth, provider).then((result) => {
+                usuarioLogado = result.user;
+                document.getElementById('area-login').classList.add('hidden');
+                document.getElementById('area-formulario').classList.remove('hidden');
+                document.getElementById('nome-usuario').innerText = usuarioLogado.displayName;
+                showToast('Bem-vindo(a), ' + usuarioLogado.displayName + '!', 'info');
+                lucide.createIcons();
+            }).catch((error) => {
+                showToast("Erro ao fazer login: " + error.message, 'error');
+            });
+        });
+
+        // Logout
+        document.getElementById('btn-logout').addEventListener('click', () => {
+            signOut(auth).then(() => {
+                usuarioLogado = null;
+                document.getElementById('area-formulario').classList.add('hidden');
+                document.getElementById('area-login').classList.remove('hidden');
+                showToast('Sessão encerrada', 'info');
+            });
+        });
+
+        // Toggle filhos
+        window.toggleFilhos = function () {
+            const temFilhos = document.querySelector('input[name="tem_filhos"]:checked').value;
+            const areaFilhos = document.getElementById('area_filhos');
+            const uploadFilhos = document.getElementById('upload_filhos');
+            if (temFilhos === 'sim') {
+                areaFilhos.classList.remove('hidden');
+                uploadFilhos.classList.remove('hidden');
+            } else {
+                areaFilhos.classList.add('hidden');
+                uploadFilhos.classList.add('hidden');
+            }
+            updateProgress();
+        }
+
+        // Helper to create remove button
+        function removeBtnHtml() {
+            return `<button type="button" onclick="this.closest('.dynamic-item').remove(); lucide.createIcons();" class="absolute top-3 right-3 text-slate-300 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50" title="Remover"><i data-lucide="x" class="w-4 h-4"></i></button>`;
+        }
+
+        const inputClasses = 'w-full px-3.5 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white';
+        const labelClasses = 'block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider';
+        const selectClasses = 'w-full px-3.5 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white appearance-none cursor-pointer';
+
+        // Dynamic: Graduação
+        window.addGraduacao = function () {
+            const div = document.createElement('div');
+            div.className = 'dynamic-item relative bg-violet-50/40 border-l-4 border-violet-400 rounded-r-xl p-5 mb-4 slide-in';
+            div.innerHTML = `
+                ${removeBtnHtml()}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="${labelClasses}">Nível</label>
+                        <select class="grad-nivel ${selectClasses}">
+                            <option value="Licenciatura">Licenciatura</option>
+                            <option value="Bacharelado">Bacharelado</option>
+                            <option value="Tecnólogo">Tecnólogo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="${labelClasses}">Área</label>
+                        <select class="grad-area ${selectClasses}">
+                            <option value="Humanas">Humanas</option>
+                            <option value="Exatas">Exatas</option>
+                            <option value="Biológicas">Biológicas</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="${labelClasses}">Nome do Curso</label>
+                        <input type="text" class="grad-curso ${inputClasses}" placeholder="Ex: Administração">
+                    </div>
+                    <div>
+                        <label class="${labelClasses}">Ano de Conclusão</label>
+                        <input type="number" class="grad-ano ${inputClasses}" placeholder="Ano">
+                    </div>
+                </div>
+            `;
+            document.getElementById('lista-graduacoes').appendChild(div);
+            lucide.createIcons();
+        }
+
+        // Dynamic: Pós
+        window.addPos = function () {
+            const div = document.createElement('div');
+            div.className = 'dynamic-item relative bg-indigo-50/40 border-l-4 border-indigo-400 rounded-r-xl p-5 mb-4 slide-in';
+            div.innerHTML = `
+                ${removeBtnHtml()}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="${labelClasses}">Nível</label>
+                        <select class="pos-nivel ${selectClasses}">
+                            <option value="Lato Sensu">Lato Sensu</option>
+                            <option value="MBA">MBA</option>
+                            <option value="Mestrado Stricto Sensu">Mestrado Stricto Sensu</option>
+                            <option value="Doutorado Stricto Sensu">Doutorado Stricto Sensu</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="${labelClasses}">Nome do Curso</label>
+                        <input type="text" class="pos-curso ${inputClasses}" placeholder="Ex: MBA em Gestão">
+                    </div>
+                    <div>
+                        <label class="${labelClasses}">Ano de Conclusão</label>
+                        <input type="number" class="pos-ano ${inputClasses}" placeholder="Ano">
+                    </div>
+                </div>
+            `;
+            document.getElementById('lista-pos').appendChild(div);
+            lucide.createIcons();
+        }
+
+        // Dynamic: SENAI
+        window.addSenai = function () {
+            const div = document.createElement('div');
+            div.className = 'dynamic-item relative bg-orange-50/40 border-l-4 border-orange-400 rounded-r-xl p-5 mb-4 slide-in';
+            div.innerHTML = `
+                ${removeBtnHtml()}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="${labelClasses}">Tipo de Curso</label>
+                        <select class="senai-tipo ${selectClasses}">
+                            <option value="CAI">CAI</option>
+                            <option value="Técnico">Técnico</option>
+                            <option value="FIC">FIC</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="${labelClasses}">Nome do Curso</label>
+                        <input type="text" class="senai-curso ${inputClasses}" placeholder="Nome do curso">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="${labelClasses}">Concluído em (Ano)</label>
+                        <input type="number" class="senai-ano ${inputClasses}" placeholder="Ano">
+                    </div>
+                    <div>
+                        <label class="${labelClasses}">Carga Horária (Para FIC)</label>
+                        <input type="text" class="senai-carga ${inputClasses}" placeholder="Ex: 80h">
+                    </div>
+                </div>
+            `;
+            document.getElementById('lista-senai').appendChild(div);
+            lucide.createIcons();
+        }
+
+        // Dynamic: Cursos
+        window.addCurso = function () {
+            const div = document.createElement('div');
+            div.className = 'dynamic-item relative bg-teal-50/40 border-l-4 border-teal-400 rounded-r-xl p-5 mb-4 slide-in';
+            div.innerHTML = `
+                ${removeBtnHtml()}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="${labelClasses}">Categoria</label>
+                        <select class="curso-categoria ${selectClasses}">
+                            <option value="Idioma">Idioma</option>
+                            <option value="Informática">Informática</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="${labelClasses}">Nome do Curso / Ferramenta</label>
+                        <input type="text" class="curso-nome ${inputClasses}" placeholder="Ex: Inglês, Excel...">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="${labelClasses}">Concluído em (Ano)</label>
+                        <input type="number" class="curso-ano ${inputClasses}" placeholder="Ano">
+                    </div>
+                    <div>
+                        <label class="${labelClasses}">Carga Horária</label>
+                        <input type="text" class="curso-carga ${inputClasses}" placeholder="Ex: 40h">
+                    </div>
+                </div>
+            `;
+            document.getElementById('lista-cursos').appendChild(div);
+            lucide.createIcons();
+        }
+
+        // Initialize with 1 of each
+        window.onload = () => {
+            addGraduacao();
+            addPos();
+            addSenai();
+            addCurso();
+            updateProgress();
+        };
+
+        // Save
+        document.getElementById('btn-salvar').addEventListener('click', async () => {
+            if (!usuarioLogado) {
+                showToast("Sessão expirada. Faça login novamente.", 'error');
+                return;
+            }
+
+            // Basic validation
+            const nome = document.getElementById('nome').value.trim();
+            const nif = document.getElementById('nif').value.trim();
+            if (!nome || !nif) {
+                showToast("Preencha ao menos Nome e NIF!", 'error');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            document.getElementById('loading-overlay').classList.add('flex');
+
+            // Collect Graduações
+            let graduacoes = [];
+            document.querySelectorAll('.form-graduacao, .dynamic-item .grad-nivel').forEach(el => {
+                const parent = el.closest('.dynamic-item');
+                if (!parent) return;
+                const nivel = parent.querySelector('.grad-nivel');
+                if (!nivel) return;
+                graduacoes.push({
+                    nivel: nivel.value,
+                    area: parent.querySelector('.grad-area')?.value || '',
+                    curso: parent.querySelector('.grad-curso')?.value || '',
+                    ano: parent.querySelector('.grad-ano')?.value || ''
+                });
+            });
+
+            // Remove duplicates (the querySelectorAll might double-count)
+            const seen = new Set();
+            graduacoes = graduacoes.filter(g => {
+                const key = g.nivel + g.curso + g.ano;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+
+            // Collect Pós
+            let pos = [];
+            document.querySelectorAll('.pos-nivel').forEach(el => {
+                const parent = el.closest('.dynamic-item');
+                if (!parent) return;
+                pos.push({
+                    nivel: el.value,
+                    curso: parent.querySelector('.pos-curso')?.value || '',
+                    ano: parent.querySelector('.pos-ano')?.value || ''
+                });
+            });
+
+            // Collect SENAI
+            let senai = [];
+            document.querySelectorAll('.senai-tipo').forEach(el => {
+                const parent = el.closest('.dynamic-item');
+                if (!parent) return;
+                senai.push({
+                    tipo: el.value,
+                    curso: parent.querySelector('.senai-curso')?.value || '',
+                    ano: parent.querySelector('.senai-ano')?.value || '',
+                    cargaHoraria: parent.querySelector('.senai-carga')?.value || ''
+                });
+            });
+
+            // Collect Cursos
+            let cursos = [];
+            document.querySelectorAll('.curso-categoria').forEach(el => {
+                const parent = el.closest('.dynamic-item');
+                if (!parent) return;
+                cursos.push({
+                    categoria: el.value,
+                    nome: parent.querySelector('.curso-nome')?.value || '',
+                    ano: parent.querySelector('.curso-ano')?.value || '',
+                    cargaHoraria: parent.querySelector('.curso-carga')?.value || ''
+                });
+            });
+
+            const dadosProntuario = {
+                emailFuncionario: usuarioLogado.email,
+                dataPreenchimento: new Date().toISOString(),
+                dadosPessoais: {
+                    nome: nome,
+                    nif: nif,
+                    endereco: document.getElementById('endereco').value,
+                    telefone: document.getElementById('telefone').value,
+                    emailParticular: document.getElementById('email_particular').value,
+                    estadoCivil: document.getElementById('estado_civil').value,
+                    temFilhos: document.querySelector('input[name="tem_filhos"]:checked').value,
+                    nomeFilho: document.getElementById('nome_filho').value,
+                    nascimentoFilho: document.getElementById('nascimento_filho').value
+                },
+                escolaridadeBasica: {
+                    anoMedio: document.getElementById('ano_medio').value,
+                    cursoTecnico: document.getElementById('curso_tecnico').value,
+                    anoTecnico: document.getElementById('ano_tecnico').value
+                },
+                graduacoes: graduacoes,
+                posGraduacoes: pos,
+                senai: senai,
+                cursosProfissionalizantes: cursos
+            };
+
+            try {
+                await addDoc(collection(db, "Funcionarios"), dadosProntuario);
+                document.getElementById('loading-overlay').classList.add('hidden');
+                document.getElementById('loading-overlay').classList.remove('flex');
+                showToast("Prontuário salvo com sucesso!", 'success');
+
+                // Pulse the save button
+                const btn = document.getElementById('btn-salvar');
+                btn.classList.add('pulse-save');
+                setTimeout(() => btn.classList.remove('pulse-save'), 600);
+
+                /* NOTA: Para enviar os arquivos selecionados nos inputs <input type="file">,
+                   será necessário importar e configurar o "Firebase Storage".
+                   O Firestore Database salva apenas TEXTO e JSON. */
+            } catch (error) {
+                console.error("Erro ao salvar: ", error);
+                document.getElementById('loading-overlay').classList.add('hidden');
+                document.getElementById('loading-overlay').classList.remove('flex');
+                showToast("Erro ao salvar os dados: " + error.message, 'error');
+            }
+        });
+    </script>
+</body>
+</html>
