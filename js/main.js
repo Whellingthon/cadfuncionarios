@@ -9,7 +9,7 @@ const firebaseConfig = {
     apiKey: "AIzaSyCgDbwdOmhyFe4HflcYcOaEX8LXrF3k1U0",
     authDomain: "cadfuncionario-13bac.firebaseapp.com",
     projectId: "cadfuncionario-13bac",
-    storageBucket: "cadfuncionario-13bac.firebasestorage.app", // Corrigido para o padrão do Storage
+    storageBucket: "cadfuncionario-13bac.firebasestorage.app", 
     messagingSenderId: "392240312410",
     appId: "1:392240312410:web:0d9b28dbc4017154d32863",
     measurementId: "G-90G0FMKM1F"
@@ -149,18 +149,18 @@ window.toggleFilhos = function () {
     
     const temFilhos = radioVal.value;
     const areaFilhos = document.getElementById('area_filhos');
-    const uploadFilhos = document.getElementById('upload_filhos');
-    const listaFilhos = document.getElementById('lista-filhos');
     
+    // Mostra/esconde apenas a área de dados dos filhos 
+    // (o upload dinâmico de doc. dependentes no HTML já fica disponível na seção 7)
     if (temFilhos === 'sim') {
         if(areaFilhos) areaFilhos.classList.remove('hidden');
-        if(uploadFilhos) uploadFilhos.classList.remove('hidden');
+        const listaFilhos = document.getElementById('lista-filhos');
         if (listaFilhos && listaFilhos.children.length === 0) {
             window.addFilho();
         }
     } else {
         if(areaFilhos) areaFilhos.classList.add('hidden');
-        if(uploadFilhos) uploadFilhos.classList.add('hidden');
+        const listaFilhos = document.getElementById('lista-filhos');
         if(listaFilhos) listaFilhos.innerHTML = ''; 
     }
     updateProgress();
@@ -319,6 +319,7 @@ async function uploadArquivo(file, pasta) {
     return { nome: file.name, url: downloadURL };
 }
 
+// Upload para um input isolado com propriedade 'multiple'
 async function uploadMultiplosArquivos(inputElement, pasta) {
     if (!inputElement || !inputElement.files || inputElement.files.length === 0) return [];
     const promessas = [];
@@ -326,6 +327,24 @@ async function uploadMultiplosArquivos(inputElement, pasta) {
         promessas.push(uploadArquivo(inputElement.files[i], pasta));
     }
     return await Promise.all(promessas);
+}
+
+// NOVA FUNÇÃO: Upload para múltiplos inputs dinâmicos na tela (ex: doc_filhos[], certificados[])
+async function uploadArquivosDinamicos(seletor, pasta) {
+    const inputs = document.querySelectorAll(seletor);
+    const promessas = [];
+    
+    inputs.forEach(input => {
+        if (input.files && input.files.length > 0) {
+            for (let i = 0; i < input.files.length; i++) {
+                promessas.push(uploadArquivo(input.files[i], pasta));
+            }
+        }
+    });
+    
+    const resultados = await Promise.all(promessas);
+    // Filtra para remover valores nulos
+    return resultados.filter(res => res !== null); 
 }
 
 
@@ -352,17 +371,20 @@ if(btnSalvar) {
         if (pLoading) pLoading.innerText = "Enviando arquivos... Isso pode levar alguns segundos.";
 
         try {
+            // Usa encadeamento opcional (?.) para evitar erro se o input não for encontrado
             const linksDocumentos = {
-                rg: await uploadArquivo(document.getElementById('file_rg').files[0], 'documentos_pessoais'),
-                cpf: await uploadArquivo(document.getElementById('file_cpf').files[0], 'documentos_pessoais'),
-                cnh: await uploadArquivo(document.getElementById('file_cnh').files[0], 'documentos_pessoais'),
-                ctps: await uploadArquivo(document.getElementById('file_ctps').files[0], 'documentos_pessoais'),
-                reservista: await uploadArquivo(document.getElementById('file_reservista').files[0], 'documentos_pessoais'),
-                sus: await uploadArquivo(document.getElementById('file_sus').files[0], 'documentos_pessoais'),
-                certidao: await uploadArquivo(document.getElementById('file_certidao').files[0], 'documentos_pessoais'),
-                filhos: await uploadMultiplosArquivos(document.getElementById('file_filhos'), 'documentos_dependentes'),
+                rg: await uploadArquivo(document.getElementById('file_rg')?.files[0], 'documentos_pessoais'),
+                cpf: await uploadArquivo(document.getElementById('file_cpf')?.files[0], 'documentos_pessoais'),
+                cnh: await uploadArquivo(document.getElementById('file_cnh')?.files[0], 'documentos_pessoais'),
+                ctps: await uploadArquivo(document.getElementById('file_ctps')?.files[0], 'documentos_pessoais'),
+                reservista: await uploadArquivo(document.getElementById('file_reservista')?.files[0], 'documentos_pessoais'),
+                sus: await uploadArquivo(document.getElementById('file_sus')?.files[0], 'documentos_pessoais'),
+                certidao: await uploadArquivo(document.getElementById('file_certidao')?.files[0], 'documentos_pessoais'),
+                
+                // Atualizado para varrer os inputs dinâmicos:
+                filhos: await uploadArquivosDinamicos('input[name="doc_filhos[]"]', 'documentos_dependentes'),
                 diplomas: await uploadMultiplosArquivos(document.getElementById('file_diplomas'), 'escolaridade'),
-                certificados: await uploadMultiplosArquivos(document.getElementById('file_certificados'), 'certificados')
+                certificados: await uploadArquivosDinamicos('input[name="certificados[]"]', 'certificados')
             };
 
             if (pLoading) pLoading.innerText = "Salvando prontuário...";

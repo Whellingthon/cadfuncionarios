@@ -40,7 +40,6 @@
 </head>
 <body class="bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100 min-h-screen scroll-smooth">
 
-    <!-- Toast Notification -->
     <div id="toast" class="fixed top-6 right-6 z-50 hidden">
         <div id="toast-inner" class="flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl text-white font-medium text-sm backdrop-blur-sm transition-all duration-300 transform translate-x-full">
             <i data-lucide="check-circle" class="w-5 h-5" id="toast-icon"></i>
@@ -48,7 +47,6 @@
         </div>
     </div>
 
-    <!-- Loading Overlay -->
     <div id="loading-overlay" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-40 hidden flex items-center justify-center">
         <div class="flex flex-col items-center gap-4">
             <div class="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
@@ -58,7 +56,6 @@
 
     <div class="max-w-4xl mx-auto px-4 py-6 sm:py-10">
 
-        <!-- Header -->
         <header class="text-center mb-8 fade-in">
             <div class="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider uppercase mb-4">
                 <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
@@ -68,7 +65,6 @@
             <p class="text-slate-500 mt-2 text-sm sm:text-base">Gerencie os dados funcionais de forma rápida e segura</p>
         </header>
 
-        <!-- Login Area -->
         <div id="area-login" class="fade-in">
             <div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 p-8 sm:p-12 text-center border border-slate-100">
                 <div class="w-20 h-20 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-red-200">
@@ -93,9 +89,7 @@
             </div>
         </div>
 
-        <!-- Form Area -->
         <div id="area-formulario" class="hidden">
-            <!-- User Info Bar -->
             <div class="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200 px-5 py-3.5 mb-6 flex items-center justify-between sticky top-0 z-30 shadow-sm fade-in">
                 <div class="flex items-center gap-3">
                     <div class="w-9 h-9 bg-primary-100 rounded-full flex items-center justify-center">
@@ -111,7 +105,6 @@
                 </button>
             </div>
 
-            <!-- Progress Indicator -->
             <div class="flex items-center gap-2 mb-6 text-xs font-medium text-slate-400">
                 <i data-lucide="clipboard-list" class="w-4 h-4"></i>
                 <span>Progresso do preenchimento</span>
@@ -121,7 +114,6 @@
                 <span id="progress-text" class="text-primary-600 font-bold">0%</span>
             </div>
 
-            <!-- Section 1: Dados Pessoais -->
             <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -187,18 +179,18 @@
                 </div>
 
                 <div id="area_filhos" class="hidden mt-4 bg-primary-50/50 border border-primary-100 rounded-xl p-5 slide-in">
-    <div class="flex items-center gap-2 mb-3">
-        <i data-lucide="baby" class="w-4 h-4 text-primary-500"></i>
-        <span class="text-xs font-bold text-primary-700 uppercase tracking-wider">Dados dos Filhos</span>
-    </div>
-    
-    <div id="lista-filhos" class="space-y-3"></div>
+                    <div class="flex items-center gap-2 mb-3">
+                        <i data-lucide="baby" class="w-4 h-4 text-primary-500"></i>
+                        <span class="text-xs font-bold text-primary-700 uppercase tracking-wider">Dados dos Filhos</span>
+                    </div>
+                    
+                    <div id="lista-filhos" class="space-y-3"></div>
 
-    <button class="btn-add inline-flex items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-700 bg-primary-100 hover:bg-primary-200 px-4 py-2 rounded-lg transition-all duration-200 mt-3" type="button" onclick="addFilho()">
-        <i data-lucide="plus-circle" class="w-4 h-4"></i>
-        Adicionar Filho(a)
-    </button>
-</div>
+                    <button class="btn-add inline-flex items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-700 bg-primary-100 hover:bg-primary-200 px-4 py-2 rounded-lg transition-all duration-200 mt-3" type="button" onclick="addFilho()">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        Adicionar Filho(a)
+                    </button>
+                </div>
             </section>
 
            <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
@@ -229,7 +221,6 @@
                 </div>
             </section>
 
-            <!-- Section 3: Graduação -->
             <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -247,7 +238,6 @@
                 </button>
             </section>
 
-            <!-- Section 4: Pós-Graduação -->
             <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -265,7 +255,6 @@
                 </button>
             </section>
 
-            <!-- Section 5: SENAI -->
             <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -283,7 +272,6 @@
                 </button>
             </section>
 
-            <!-- Section 6: Cursos Profissionalizantes -->
             <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -301,7 +289,6 @@
                 </button>
             </section>
 
-            <!-- Section 7: Documentos Pessoais -->
             <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -345,14 +332,20 @@
                         <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">7. Certidão Nascimento/Casamento</label>
                         <input type="file" id="file_certidao" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:text-xs file:font-semibold">
                     </div>
-                    <div id="upload_filhos" class="hidden bg-primary-50 rounded-xl border border-dashed border-primary-200 p-4 hover:border-primary-400 transition-all">
-                        <label class="block text-xs font-bold text-primary-700 mb-2 uppercase tracking-wider">8. Filhos (Certidão/RG/CPF)</label>
-                        <input type="file" id="file_filhos" accept=".pdf,.jpg,.jpeg,.png" multiple class="w-full text-xs text-primary-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:text-xs file:font-semibold file:bg-primary-600 file:hover:bg-primary-700">
+
+                    <div class="col-span-1 sm:col-span-2 bg-primary-50/50 rounded-xl border border-dashed border-primary-200 p-4 transition-all">
+                        <div class="flex justify-between items-center mb-4">
+                            <label class="block text-xs font-bold text-primary-700 uppercase tracking-wider">8. Filhos (Certidão/RG/CPF)</label>
+                            <button type="button" id="btn_add_doc_filho" class="text-xs font-bold text-primary-600 hover:text-primary-800 bg-primary-100 hover:bg-primary-200 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Documento
+                            </button>
+                        </div>
+                        <div id="container_docs_filhos" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Section 8: Anexos de Escolaridade -->
             <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5 fade-in">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -368,56 +361,125 @@
                         <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">9. Escolaridade (Médio / Graduação / Pós)</label>
                         <input type="file" id="file_diplomas" accept=".pdf,.jpg,.jpeg,.png" multiple class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:text-xs file:font-semibold">
                     </div>
-                    <div class="bg-slate-50 rounded-xl border border-dashed border-slate-200 p-4 hover:border-sky-300 hover:bg-sky-50/30 transition-all">
-                        <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">10. Certificados (Informática / Idiomas / Outros)</label>
-                        <input type="file" id="file_certificados" accept=".pdf,.jpg,.jpeg,.png" multiple class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:text-xs file:font-semibold">
+                    
+                    <div class="bg-slate-50 rounded-xl border border-dashed border-slate-200 p-4 transition-all col-span-1 sm:col-span-2">
+                        <div class="flex justify-between items-center mb-4">
+                            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">10. Certificados (Informática / Idiomas / Outros)</label>
+                            <button type="button" id="btn_add_certificado_doc" class="text-xs font-bold text-sky-600 hover:text-sky-800 bg-sky-100 hover:bg-sky-200 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Certificado
+                            </button>
+                        </div>
+                        <div id="container_docs_certificados" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Save Button -->
             <button id="btn-salvar" class="w-full bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 text-white font-bold text-lg py-4 rounded-2xl shadow-lg shadow-accent-200/50 hover:shadow-accent-300/50 transition-all duration-300 hover:-translate-y-0.5 flex items-center justify-center gap-3 mb-8">
                 <i data-lucide="save" class="w-5 h-5"></i>
                 Salvar Prontuário Completo
             </button>
 
-            <!-- Footer -->
             <footer class="text-center pb-6">
                 <p class="text-xs text-slate-400">Prontuário Digital &bull; Dados protegidos e armazenados com segurança</p>
             </footer>
         </div>
     </div>
-<script src="https://cdn.jsdelivr.net/npm/lucide@0.244.0/dist/lucide.min.js"></script>
-<script type="module" src="js/main.js"></script>
+    
+    <footer class="mt-10 border-t border-slate-200/60 pt-8 pb-6 text-center fade-in">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 px-4">
+            
+            <div class="flex flex-col items-center sm:items-start gap-1">
+                <p class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                    <i data-lucide="layers" class="w-4 h-4 text-primary-500"></i>
+                    Prontuário Digital Corporativo
+                </p>
+                <p class="text-xs text-slate-400 font-medium px-2 py-0.5 bg-slate-100 rounded-md inline-block">
+                    Versão 1.2
+                </p>
+            </div>
+
+            <div class="flex flex-col items-center sm:items-end gap-1">
+                <p class="text-xs text-slate-500 flex items-center gap-1.5">
+                    Desenvolvido com <i data-lucide="code-2" class="w-3.5 h-3.5 text-primary-500"></i> por
+                </p>
+                <a href="https://www.instagram.com/welington.hopka.2025/" target="_blank" rel="noopener noreferrer" class="group flex items-center gap-1.5 text-sm font-bold text-slate-600 hover:text-rose-600 transition-colors">
+                    <i data-lucide="instagram" class="w-4 h-4 group-hover:scale-110 transition-transform"></i>
+                    Welington Hopka
+                </a>
+            </div>
+
+        </div>
+
+        <div class="mt-8 flex items-center justify-center gap-2 text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-accent-500"></i>
+            Em conformidade com a LGPD &bull; Dados Criptografados
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.244.0/dist/lucide.min.js"></script>
+    <script type="module" src="js/main.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // ----- LÓGICA PARA DOCUMENTOS DE FILHOS -----
+            const btnAddDocFilho = document.getElementById('btn_add_doc_filho');
+            const containerDocsFilhos = document.getElementById('container_docs_filhos');
+            let contadorDocsFilhos = 0;
+
+            btnAddDocFilho.addEventListener('click', () => {
+                contadorDocsFilhos++;
+                const div = document.createElement('div');
+                div.className = 'relative bg-white rounded-lg border border-primary-200 p-3 fade-in shadow-sm hover:border-primary-300 transition-all';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-xs font-semibold text-primary-700">Documento Filho(a) ${contadorDocsFilhos}</label>
+                        <button type="button" class="text-xs text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors" onclick="this.parentElement.parentElement.remove()" title="Remover">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <input type="file" name="doc_filhos[]" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:text-xs file:font-semibold file:bg-primary-600 file:text-white file:border-0 hover:file:bg-primary-700 cursor-pointer">
+                `;
+                containerDocsFilhos.appendChild(div);
+                
+                // Recarrega os ícones na nova div adicionada
+                if(window.lucide) {
+                    lucide.createIcons({ root: div });
+                }
+            });
+
+            // Inicia com pelo menos um campo vazio visível para os filhos
+            btnAddDocFilho.click();
+
+            // ----- LÓGICA PARA CERTIFICADOS -----
+            const btnAddCertificadoDoc = document.getElementById('btn_add_certificado_doc');
+            const containerDocsCertificados = document.getElementById('container_docs_certificados');
+            let contadorCertificadosDoc = 0;
+
+            btnAddCertificadoDoc.addEventListener('click', () => {
+                contadorCertificadosDoc++;
+                const div = document.createElement('div');
+                div.className = 'relative bg-white rounded-lg border border-slate-200 p-3 fade-in shadow-sm hover:border-sky-200 transition-all';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-xs font-semibold text-slate-600">Certificado Adicional ${contadorCertificadosDoc}</label>
+                        <button type="button" class="text-xs text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors" onclick="this.parentElement.parentElement.remove()" title="Remover">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <input type="file" name="certificados[]" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:text-xs file:font-semibold file:bg-sky-600 file:text-white file:border-0 hover:file:bg-sky-700 cursor-pointer">
+                `;
+                containerDocsCertificados.appendChild(div);
+                
+                // Recarrega os ícones
+                if(window.lucide) {
+                    lucide.createIcons({ root: div });
+                }
+            });
+
+            // Inicia com um campo de certificado
+            btnAddCertificadoDoc.click();
+        });
+    </script>
 </body>
-<footer class="mt-10 border-t border-slate-200/60 pt-8 pb-6 text-center fade-in">
-                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 px-4">
-                    
-                    <div class="flex flex-col items-center sm:items-start gap-1">
-                        <p class="text-sm font-bold text-slate-700 flex items-center gap-2">
-                            <i data-lucide="layers" class="w-4 h-4 text-primary-500"></i>
-                            Prontuário Digital Corporativo
-                        </p>
-                        <p class="text-xs text-slate-400 font-medium px-2 py-0.5 bg-slate-100 rounded-md inline-block">
-                            Versão 1.2
-                        </p>
-                    </div>
-
-                    <div class="flex flex-col items-center sm:items-end gap-1">
-                        <p class="text-xs text-slate-500 flex items-center gap-1.5">
-                            Desenvolvido com <i data-lucide="code-2" class="w-3.5 h-3.5 text-primary-500"></i> por
-                        </p>
-                        <a href="https://www.instagram.com/welington.hopka.2025/" target="_blank" rel="noopener noreferrer" class="group flex items-center gap-1.5 text-sm font-bold text-slate-600 hover:text-rose-600 transition-colors">
-                            <i data-lucide="instagram" class="w-4 h-4 group-hover:scale-110 transition-transform"></i>
-                            Welington Hopka
-                        </a>
-                    </div>
-
-                </div>
-
-                <div class="mt-8 flex items-center justify-center gap-2 text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
-                    <i data-lucide="shield-check" class="w-3.5 h-3.5 text-accent-500"></i>
-                    Em conformidade com a LGPD &bull; Dados Criptografados
-                </div>
-            </footer>
 </html>
