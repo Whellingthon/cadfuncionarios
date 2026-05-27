@@ -300,15 +300,92 @@ window.addCurso = function () {
     document.getElementById('lista-cursos').appendChild(div);
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
+// === SISTEMA DE ACUMULAÇÃO DE ARQUIVOS (Múltiplas Seleções) ===
+// Contorna o reset nativo do input type="file" multiple usando a API DataTransfer
+const acumuladorArquivos = {
+    'file_diplomas': new DataTransfer(),
+    'file_filhos': new DataTransfer() // Se houver uso do upload múltiplo antigo
+};
 
+function configurarInputMultiplo(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    // Cria um container visual abaixo do input para listar os arquivos acumulados
+    const listaNomesUI = document.createElement('div');
+    listaNomesUI.className = 'mt-2 space-y-1.5';
+    input.parentNode.appendChild(listaNomesUI);
+
+    input.addEventListener('change', function() {
+        const dt = acumuladorArquivos[inputId];
+        
+        // Adiciona novos arquivos à memória, evitando duplicatas pelo nome
+        for (let i = 0; i < this.files.length; i++) {
+            const novoArquivo = this.files[i];
+            let jaExiste = Array.from(dt.files).some(f => f.name === novoArquivo.name);
+            
+            if (!jaExiste) {
+                dt.items.add(novoArquivo);
+            }
+        }
+        
+        // Força o input a receber a lista completa acumulada
+        this.files = dt.files;
+        
+        // Atualiza a visualização na tela
+        renderizarListaArquivos(inputId, listaNomesUI);
+    });
+}
+
+function renderizarListaArquivos(inputId, containerUI) {
+    containerUI.innerHTML = '';
+    const dt = acumuladorArquivos[inputId];
+    
+    Array.from(dt.files).forEach(file => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm fade-in';
+        div.innerHTML = `
+            <span class="text-xs text-slate-600 font-medium truncate max-w-[80%]">
+                <i data-lucide="file" class="w-3 h-3 inline mr-1 text-slate-400"></i>${file.name}
+            </span>
+            <button type="button" class="text-slate-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50" onclick="removerArquivoAcumulado('${inputId}', '${file.name}')" title="Remover este arquivo">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+        `;
+        containerUI.appendChild(div);
+    });
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Função global para o botão de deletar o arquivo acumulado conseguir chamá-la
+window.removerArquivoAcumulado = function(inputId, fileName) {
+    const dt = acumuladorArquivos[inputId];
+    const novoDt = new DataTransfer();
+    
+    // Copia todos para o novo DataTransfer, exceto o que o usuário clicou para excluir
+    Array.from(dt.files).forEach(file => {
+        if (file.name !== fileName) novoDt.items.add(file);
+    });
+    
+    acumuladorArquivos[inputId] = novoDt;
+    
+    // Devolve a lista atualizada para o input e atualiza a interface
+    const input = document.getElementById(inputId);
+    if (input) {
+        input.files = novoDt.files;
+        renderizarListaArquivos(inputId, input.nextElementSibling);
+    }
+}
 window.onload = () => {
     window.addGraduacao();
     window.addPos();
     window.addSenai();
     window.addCurso();
     updateProgress();
+    configurarInputMultiplo('file_diplomas');
+    
 };
-
 // === LÓGICA DE UPLOAD NO STORAGE ===
 async function uploadArquivo(file, pasta) {
     if (!file) return null;
