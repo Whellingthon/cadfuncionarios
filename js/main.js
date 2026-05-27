@@ -1,7 +1,7 @@
 // === IMPORTAÇÕES DO FIREBASE ===
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 // === CONFIGURAÇÃO ===
@@ -83,13 +83,31 @@ camposParaOuvir.forEach(id => {
 });
 document.querySelectorAll('input[name="tem_filhos"]').forEach(r => r.addEventListener('change', updateProgress));
 
-
-// === LÓGICA DE AUTENTICAÇÃO ===
+// === LÓGICA DE LOGIN (COM BLOQUEIO DE DUPLICADOS) ===
 const btnLogin = document.getElementById('btn-login');
 if(btnLogin) {
     btnLogin.addEventListener('click', () => {
-        signInWithPopup(auth, provider).then((result) => {
+        signInWithPopup(auth, provider).then(async (result) => {
             usuarioLogado = result.user;
+            
+            // VERIFICA SE O UTILIZADOR JÁ TEM REGISTO
+            const q = query(collection(db, "Funcionarios"), where("emailFuncionario", "==", usuarioLogado.email));
+            const querySnapshot = await getDocs(q);
+            
+            if (!querySnapshot.empty) {
+                // JÁ CADASTROU! Trava o ecrã.
+                document.getElementById('area-login').innerHTML = `
+                    <div class="bg-green-50 text-green-700 p-8 rounded-2xl border border-green-200">
+                        <i data-lucide="check-circle" class="w-12 h-12 mx-auto mb-4"></i>
+                        <h2 class="text-xl font-bold mb-2">Prontuário já enviado!</h2>
+                        <p class="text-sm">Os seus dados já estão em análise pelos Recursos Humanos. Obrigado!</p>
+                    </div>
+                `;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return; // Pára o código aqui, não mostra o formulário.
+            }
+
+            // SE NÃO TEM REGISTO, LIBERTA O FORMULÁRIO:
             document.getElementById('area-login').classList.add('hidden');
             document.getElementById('area-formulario').classList.remove('hidden');
             document.getElementById('nome-usuario').innerText = usuarioLogado.displayName;
@@ -114,7 +132,7 @@ if(btnLogout) {
 }
 
 
-// === GERAÇÃO DINÂMICA DE CAMPOS (Ligados ao objeto window para o HTML acessar) ===
+// === GERAÇÃO DINÂMICA DE CAMPOS ===
 const inputClasses = 'w-full px-3.5 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white';
 const labelClasses = 'block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider';
 const selectClasses = 'w-full px-3.5 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white appearance-none cursor-pointer';
@@ -150,8 +168,6 @@ window.toggleFilhos = function () {
     const temFilhos = radioVal.value;
     const areaFilhos = document.getElementById('area_filhos');
     
-    // Mostra/esconde apenas a área de dados dos filhos 
-    // (o upload dinâmico de doc. dependentes no HTML já fica disponível na seção 7)
     if (temFilhos === 'sim') {
         if(areaFilhos) areaFilhos.classList.remove('hidden');
         const listaFilhos = document.getElementById('lista-filhos');
@@ -300,18 +316,17 @@ window.addCurso = function () {
     document.getElementById('lista-cursos').appendChild(div);
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
-// === SISTEMA DE ACUMULAÇÃO DE ARQUIVOS (Múltiplas Seleções) ===
-// Contorna o reset nativo do input type="file" multiple usando a API DataTransfer
+
+// === SISTEMA DE ACUMULAÇÃO DE ARQUIVOS ===
 const acumuladorArquivos = {
     'file_diplomas': new DataTransfer(),
-    'file_filhos': new DataTransfer() // Se houver uso do upload múltiplo antigo
+    'file_filhos': new DataTransfer() 
 };
 
 function configurarInputMultiplo(inputId) {
     const input = document.getElementById(inputId);
     if (!input) return;
 
-    // Cria um container visual abaixo do input para listar os arquivos acumulados
     const listaNomesUI = document.createElement('div');
     listaNomesUI.className = 'mt-2 space-y-1.5';
     input.parentNode.appendChild(listaNomesUI);
@@ -319,7 +334,6 @@ function configurarInputMultiplo(inputId) {
     input.addEventListener('change', function() {
         const dt = acumuladorArquivos[inputId];
         
-        // Adiciona novos arquivos à memória, evitando duplicatas pelo nome
         for (let i = 0; i < this.files.length; i++) {
             const novoArquivo = this.files[i];
             let jaExiste = Array.from(dt.files).some(f => f.name === novoArquivo.name);
@@ -329,10 +343,7 @@ function configurarInputMultiplo(inputId) {
             }
         }
         
-        // Força o input a receber a lista completa acumulada
         this.files = dt.files;
-        
-        // Atualiza a visualização na tela
         renderizarListaArquivos(inputId, listaNomesUI);
     });
 }
@@ -358,25 +369,23 @@ function renderizarListaArquivos(inputId, containerUI) {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-// Função global para o botão de deletar o arquivo acumulado conseguir chamá-la
 window.removerArquivoAcumulado = function(inputId, fileName) {
     const dt = acumuladorArquivos[inputId];
     const novoDt = new DataTransfer();
     
-    // Copia todos para o novo DataTransfer, exceto o que o usuário clicou para excluir
     Array.from(dt.files).forEach(file => {
         if (file.name !== fileName) novoDt.items.add(file);
     });
     
     acumuladorArquivos[inputId] = novoDt;
     
-    // Devolve a lista atualizada para o input e atualiza a interface
     const input = document.getElementById(inputId);
     if (input) {
         input.files = novoDt.files;
         renderizarListaArquivos(inputId, input.nextElementSibling);
     }
 }
+
 window.onload = () => {
     window.addGraduacao();
     window.addPos();
@@ -384,8 +393,8 @@ window.onload = () => {
     window.addCurso();
     updateProgress();
     configurarInputMultiplo('file_diplomas');
-    
 };
+
 // === LÓGICA DE UPLOAD NO STORAGE ===
 async function uploadArquivo(file, pasta) {
     if (!file) return null;
@@ -396,7 +405,6 @@ async function uploadArquivo(file, pasta) {
     return { nome: file.name, url: downloadURL };
 }
 
-// Upload para um input isolado com propriedade 'multiple'
 async function uploadMultiplosArquivos(inputElement, pasta) {
     if (!inputElement || !inputElement.files || inputElement.files.length === 0) return [];
     const promessas = [];
@@ -406,7 +414,6 @@ async function uploadMultiplosArquivos(inputElement, pasta) {
     return await Promise.all(promessas);
 }
 
-// NOVA FUNÇÃO: Upload para múltiplos inputs dinâmicos na tela (ex: doc_filhos[], certificados[])
 async function uploadArquivosDinamicos(seletor, pasta) {
     const inputs = document.querySelectorAll(seletor);
     const promessas = [];
@@ -420,7 +427,6 @@ async function uploadArquivosDinamicos(seletor, pasta) {
     });
     
     const resultados = await Promise.all(promessas);
-    // Filtra para remover valores nulos
     return resultados.filter(res => res !== null); 
 }
 
@@ -445,10 +451,9 @@ if(btnSalvar) {
         document.getElementById('loading-overlay').classList.add('flex');
         
         const pLoading = document.querySelector('#loading-overlay p');
-        if (pLoading) pLoading.innerText = "Enviando arquivos... Isso pode levar alguns segundos.";
+        if (pLoading) pLoading.innerText = "Enviando arquivos... Isto pode levar alguns segundos.";
 
         try {
-            // Usa encadeamento opcional (?.) para evitar erro se o input não for encontrado
             const linksDocumentos = {
                 rg: await uploadArquivo(document.getElementById('file_rg')?.files[0], 'documentos_pessoais'),
                 cpf: await uploadArquivo(document.getElementById('file_cpf')?.files[0], 'documentos_pessoais'),
@@ -458,13 +463,12 @@ if(btnSalvar) {
                 sus: await uploadArquivo(document.getElementById('file_sus')?.files[0], 'documentos_pessoais'),
                 certidao: await uploadArquivo(document.getElementById('file_certidao')?.files[0], 'documentos_pessoais'),
                 
-                // Atualizado para varrer os inputs dinâmicos:
                 filhos: await uploadArquivosDinamicos('input[name="doc_filhos[]"]', 'documentos_dependentes'),
                 diplomas: await uploadMultiplosArquivos(document.getElementById('file_diplomas'), 'escolaridade'),
                 certificados: await uploadArquivosDinamicos('input[name="certificados[]"]', 'certificados')
             };
 
-            if (pLoading) pLoading.innerText = "Salvando prontuário...";
+            if (pLoading) pLoading.innerText = "A guardar prontuário...";
 
             let listaDeFilhos = [];
             if (document.querySelector('input[name="tem_filhos"]:checked').value === 'sim') {
@@ -534,6 +538,7 @@ if(btnSalvar) {
 
             const dadosProntuario = {
                 emailFuncionario: usuarioLogado.email,
+                statusCadastro: "pendente",
                 dataPreenchimento: new Date().toISOString(),
                 dadosPessoais: {
                     nome: nome,
@@ -574,62 +579,58 @@ if(btnSalvar) {
         }
     });
 }
-    document.addEventListener('DOMContentLoaded', () => {
-            // ----- LÓGICA PARA DOCUMENTOS DE FILHOS -----
-            const btnAddDocFilho = document.getElementById('btn_add_doc_filho');
-            const containerDocsFilhos = document.getElementById('container_docs_filhos');
-            let contadorDocsFilhos = 0;
 
-            btnAddDocFilho.addEventListener('click', () => {
-                contadorDocsFilhos++;
-                const div = document.createElement('div');
-                div.className = 'relative bg-white rounded-lg border border-primary-200 p-3 fade-in shadow-sm hover:border-primary-300 transition-all';
-                div.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <label class="block text-xs font-semibold text-primary-700">Documento Filho(a) ${contadorDocsFilhos}</label>
-                        <button type="button" class="text-xs text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors" onclick="this.parentElement.parentElement.remove()" title="Remover">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                    <input type="file" name="doc_filhos[]" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:text-xs file:font-semibold file:bg-primary-600 file:text-white file:border-0 hover:file:bg-primary-700 cursor-pointer">
-                `;
-                containerDocsFilhos.appendChild(div);
-                
-                // Recarrega os ícones na nova div adicionada
-                if(window.lucide) {
-                    lucide.createIcons({ root: div });
-                }
-            });
+// === GERAÇÃO DOS ANEXOS DINÂMICOS (Filhos e Certificados) ===
+document.addEventListener('DOMContentLoaded', () => {
+    // LÓGICA PARA DOCUMENTOS DE FILHOS
+    const btnAddDocFilho = document.getElementById('btn_add_doc_filho');
+    const containerDocsFilhos = document.getElementById('container_docs_filhos');
+    let contadorDocsFilhos = 0;
 
-            // Inicia com pelo menos um campo vazio visível para os filhos
-            btnAddDocFilho.click();
-
-            // ----- LÓGICA PARA CERTIFICADOS -----
-            const btnAddCertificadoDoc = document.getElementById('btn_add_certificado_doc');
-            const containerDocsCertificados = document.getElementById('container_docs_certificados');
-            let contadorCertificadosDoc = 0;
-
-            btnAddCertificadoDoc.addEventListener('click', () => {
-                contadorCertificadosDoc++;
-                const div = document.createElement('div');
-                div.className = 'relative bg-white rounded-lg border border-slate-200 p-3 fade-in shadow-sm hover:border-sky-200 transition-all';
-                div.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <label class="block text-xs font-semibold text-slate-600">Certificado Adicional ${contadorCertificadosDoc}</label>
-                        <button type="button" class="text-xs text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors" onclick="this.parentElement.parentElement.remove()" title="Remover">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                    <input type="file" name="certificados[]" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:text-xs file:font-semibold file:bg-sky-600 file:text-white file:border-0 hover:file:bg-sky-700 cursor-pointer">
-                `;
-                containerDocsCertificados.appendChild(div);
-                
-                // Recarrega os ícones
-                if(window.lucide) {
-                    lucide.createIcons({ root: div });
-                }
-            });
-
-            // Inicia com um campo de certificado
-            btnAddCertificadoDoc.click();
+    if(btnAddDocFilho && containerDocsFilhos) {
+        btnAddDocFilho.addEventListener('click', () => {
+            contadorDocsFilhos++;
+            const div = document.createElement('div');
+            div.className = 'relative bg-white rounded-lg border border-primary-200 p-3 fade-in shadow-sm hover:border-primary-300 transition-all';
+            div.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block text-xs font-semibold text-primary-700">Documento Filho(a) ${contadorDocsFilhos}</label>
+                    <button type="button" class="text-xs text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors" onclick="this.parentElement.parentElement.remove()" title="Remover">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <input type="file" name="doc_filhos[]" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:text-xs file:font-semibold file:bg-primary-600 file:text-white file:border-0 hover:file:bg-primary-700 cursor-pointer">
+            `;
+            containerDocsFilhos.appendChild(div);
+            
+            if(window.lucide) lucide.createIcons({ root: div });
         });
+        btnAddDocFilho.click(); // Inicia com um visível
+    }
+
+    // LÓGICA PARA CERTIFICADOS
+    const btnAddCertificadoDoc = document.getElementById('btn_add_certificado_doc');
+    const containerDocsCertificados = document.getElementById('container_docs_certificados');
+    let contadorCertificadosDoc = 0;
+
+    if(btnAddCertificadoDoc && containerDocsCertificados) {
+        btnAddCertificadoDoc.addEventListener('click', () => {
+            contadorCertificadosDoc++;
+            const div = document.createElement('div');
+            div.className = 'relative bg-white rounded-lg border border-slate-200 p-3 fade-in shadow-sm hover:border-sky-200 transition-all';
+            div.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block text-xs font-semibold text-slate-600">Certificado Adicional ${contadorCertificadosDoc}</label>
+                    <button type="button" class="text-xs text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors" onclick="this.parentElement.parentElement.remove()" title="Remover">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <input type="file" name="certificados[]" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:text-xs file:font-semibold file:bg-sky-600 file:text-white file:border-0 hover:file:bg-sky-700 cursor-pointer">
+            `;
+            containerDocsCertificados.appendChild(div);
+            
+            if(window.lucide) lucide.createIcons({ root: div });
+        });
+        btnAddCertificadoDoc.click(); // Inicia com um visível
+    }
+});

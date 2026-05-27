@@ -56,10 +56,10 @@
         </nav>
         <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100">
             <div class="flex items-center gap-3 px-2">
-                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-accent-500 flex items-center justify-center text-white font-semibold text-sm">WH</div>
+                <div id="sidebar-user-initials" class="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-accent-500 flex items-center justify-center text-white font-semibold text-sm">--</div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-slate-700 truncate">Welington Hopka</p>
-                    <p class="text-xs text-slate-400 truncate">Administrador</p>
+                    <p id="sidebar-user-name" class="text-sm font-medium text-slate-700 truncate">A carregar...</p>
+                    <p id="sidebar-user-email" class="text-xs text-slate-400 truncate">...</p>
                 </div>
             </div>
         </div>
@@ -222,7 +222,9 @@
                     <div id="modalFilesList" class="space-y-2"></div>
                 </div>
             </div>
-            <div class="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex justify-end gap-2 rounded-b-2xl">
+          <div class="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex justify-between gap-2 rounded-b-2xl">
+                <div id="modalActionButtons" class="flex gap-2"></div>
+                
                 <button onclick="window.closeDetailModal()" class="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 border border-slate-200 transition-colors">
                     Fechar
                 </button>

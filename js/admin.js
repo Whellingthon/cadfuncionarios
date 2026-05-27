@@ -1,16 +1,13 @@
-// 1. Importações do Firebase (Agora com Auth)
+// =========================================================================
+// 1. IMPORTAÇÕES DO FIREBASE (Consolidadas e sem duplicados)
+// =========================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, query, orderBy, where, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Lista de e-mails autorizados
-const ADMIN_EMAILS = [
-    "welingtonhopka@gmail.com",
-    "gi.abertoni@gmail.com@gmail.com",
-    "email_do_rh@gmail.com"
-];
-
-// Suas credenciais do Firebase
+// =========================================================================
+// 2. CONFIGURAÇÃO E CREDENCIAIS DO FIREBASE
+// =========================================================================
 const firebaseConfig = {
     apiKey: "AIzaSyCgDbwdOmhyFe4HflcYcOaEX8LXrF3k1U0",
     authDomain: "cadfuncionario-13bac.firebaseapp.com",
@@ -26,36 +23,58 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// Variáveis Globais
+// Lista de e-mails autorizados como administradores
+const ADMIN_EMAILS = [
+    "welingtonhopka@gmail.com",
+    "gi.abertoni@gmail.com",
+    "email_do_rh@gmail.com"
+];
+
+// Variáveis Globais de Controlo
 let documents = []; 
 let filteredDocs = [];
 let currentDetailId = null;
 
-// === CATRACA DE AUTENTICAÇÃO ===
-// Escuta o estado do usuário. Só deixa passar se estiver logado E na lista.
+// =========================================================================
+// 3. CATRACA DE AUTENTICAÇÃO (Muda os nomes na tela dinamicamente)
+// =========================================================================
 onAuthStateChanged(auth, (user) => {
     if (user) {
         if (ADMIN_EMAILS.includes(user.email)) {
             console.log("Acesso Liberado para:", user.email);
-            // Oculta a área de login se ela existir no seu HTML
+            
+            // Oculta a área de login se ela existir no HTML
             const areaLogin = document.getElementById('area-login-admin');
             if (areaLogin) areaLogin.classList.add('hidden');
             
-            // AGORA SIM, com passe livre, puxamos os dados
+            // ATUALIZAÇÃO DOS CAMPOS DE UTILIZADOR NA TELA
+            const nomeCompleto = user.displayName || "Administrador";
+            const iniciais = nomeCompleto.substring(0, 2).toUpperCase();
+            
+            const elSidebarName = document.getElementById('sidebar-user-name');
+            const elSidebarInitials = document.getElementById('sidebar-user-initials');
+            const elSidebarEmail = document.getElementById('sidebar-user-email');
+            const elFooterName = document.getElementById('footer-user-name');
+            
+            if (elSidebarName) elSidebarName.textContent = nomeCompleto;
+            if (elSidebarInitials) elSidebarInitials.textContent = iniciais;
+            if (elSidebarEmail) elSidebarEmail.textContent = user.email;
+            if (elFooterName) elFooterName.textContent = nomeCompleto;
+
+            // Puxa os dados reais do Firestore
             carregarDadosDoBanco();
         } else {
-            showToast("Acesso Negado: Seu e-mail não é administrador.", "error");
-            signOut(auth); // Expulsa imediatamente
+            showToast("Acesso Negado: O seu e-mail não é administrador.", "error");
+            signOut(auth); 
         }
     } else {
-        // Ninguém está logado
         console.log("Aguardando login de administrador...");
         const areaLogin = document.getElementById('area-login-admin');
         if (areaLogin) areaLogin.classList.remove('hidden');
     }
 });
 
-// === FUNÇÕES DE LOGIN/LOGOUT PARA O HTML CHAMAR ===
+// Funções de Autenticação globais
 window.loginAdmin = function() {
     signInWithPopup(auth, provider).catch(error => {
         console.error("Erro no login:", error);
@@ -72,8 +91,49 @@ window.logoutAdmin = function() {
     });
 };
 
+// =========================================================================
+// 4. MÁQUINA DE ESTADOS (Aprovar e Reprovar Prontuários)
+// =========================================================================
+window.aprovarCadastro = async function(idFuncionario, emailFuncionario, nomeFuncionario) {
+    try {
+        const docRef = doc(db, "Funcionarios", idFuncionario);
+        await updateDoc(docRef, { statusCadastro: "aprovado" });
+        
+        showToast("Cadastro Aprovado com sucesso!", "success");
+        carregarDadosDoBanco(); 
+        closeDetailModal(); 
+        
+        const assunto = encodeURIComponent("Prontuário Aprovado - DocVault");
+        const mensagem = encodeURIComponent(`Olá ${nomeFuncionario},\n\nSeu prontuário foi analisado e aprovado com sucesso pelo setor de RH.\n\nAtenciosamente,\nEquipe DocVault`);
+        window.open(`mailto:${emailFuncionario}?subject=${assunto}&body=${mensagem}`);
+        
+    } catch (error) {
+        showToast("Erro ao aprovar cadastro.", "error");
+        console.error(error);
+    }
+};
 
-// === BUSCAR DADOS NO FIREBASE ===
+window.reprovarCadastro = async function(idFuncionario, emailFuncionario, nomeFuncionario) {
+    try {
+        const docRef = doc(db, "Funcionarios", idFuncionario);
+        await updateDoc(docRef, { statusCadastro: "rejeitado" });
+        
+        showToast("Cadastro Rejeitado com sucesso!", "success");
+        carregarDadosDoBanco(); 
+        closeDetailModal(); 
+        
+        const assunto = encodeURIComponent("Ajuste necessário no Prontuário - DocVault");
+        const mensagem = encodeURIComponent(`Olá ${nomeFuncionario},\n\nSeu prontuário foi analisado e precisamos que você revise ou reenvie algumas informações.\n\nAtenciosamente,\nEquipe DocVault`);
+        window.open(`mailto:${emailFuncionario}?subject=${assunto}&body=${mensagem}`);
+        
+    } catch (error) {
+        showToast("Erro ao reprovar cadastro.", "error");
+    }
+};
+
+// =========================================================================
+// 5. BUSCA E TRATAMENTO DE DADOS DO FIRESTORE
+// =========================================================================
 async function carregarDadosDoBanco() {
     try {
         const q = query(collection(db, "Funcionarios"), orderBy("dataPreenchimento", "desc"));
@@ -86,13 +146,13 @@ async function carregarDadosDoBanco() {
             const id = docSnap.id;
 
             const dataObj = new Date(dados.dataPreenchimento);
-            const dataFormatada = dataObj.toLocaleDateString('pt-BR');
+            const dataFormatada = isNaN(dataObj.getTime()) ? '---' : dataObj.toLocaleDateString('pt-BR');
 
             let arquivosReais = [];
             if (dados.arquivosAnexados) {
                 for (const [chave, valor] of Object.entries(dados.arquivosAnexados)) {
                     if (Array.isArray(valor)) {
-                        valor.forEach(v => arquivosReais.push({ nome: v.nome, url: v.url }));
+                        valor.forEach(v => { if (v && v.nome) arquivosReais.push({ nome: v.nome, url: v.url }); });
                     } else if (valor && valor.nome) {
                         arquivosReais.push({ nome: valor.nome, url: valor.url });
                     }
@@ -104,18 +164,18 @@ async function carregarDadosDoBanco() {
                 nome: dados.dadosPessoais?.nome || 'Nome não informado',
                 cpf: dados.dadosPessoais?.nif || 'NIF não informado',
                 categoria: 'registro', 
-                data: dataFormatada,
-                status: 'pendente', 
+                status: dados.statusCadastro || 'pendente', 
+                email: dados.emailFuncionario || '',
                 anexos: arquivosReais.length,
-                notas: `Email corporativo: ${dados.emailFuncionario}`,
+                notas: `Email corporativo: ${dados.emailFuncionario || 'Não informado'}`,
                 arquivos: arquivosReais 
             });
         });
 
         filteredDocs = [...documents];
         renderTable(filteredDocs);
-        atualizarCards(filteredDocs); // Mantém os cards atualizados
-        showToast('Dados do Firebase carregados com sucesso!', 'success');
+        atualizarCards(filteredDocs); 
+        showToast('Dados atualizados do servidor!', 'success');
 
     } catch (error) {
         console.error("Erro ao buscar do Firebase:", error);
@@ -123,7 +183,9 @@ async function carregarDadosDoBanco() {
     }
 }
 
-
+// =========================================================================
+// 6. RENDERIZAÇÃO DA INTERFACE E COMPONENTES VISUAIS
+// =========================================================================
 function getStatusBadge(status) {
     const map = {
         aprovado: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500', label: 'Aprovado' },
@@ -141,52 +203,106 @@ function getCategoryLabel(cat) {
     return map[cat] || cat;
 }
 
-// === RENDERIZAR TABELA ===
 function renderTable(docs) {
     const tbody = document.getElementById('tableBody');
     const emptyState = document.getElementById('emptyState');
     const countEl = document.getElementById('resultCount');
     if (countEl) countEl.textContent = docs.length;
 
+    if (!tbody) return;
+
     if (docs.length === 0) {
-        if(tbody) tbody.innerHTML = '';
+        tbody.innerHTML = '';
         if(emptyState) emptyState.classList.remove('hidden');
         return;
     }
 
     if(emptyState) emptyState.classList.add('hidden');
-    if(tbody) {
-        tbody.innerHTML = docs.map((doc, i) => `
-            <tr class="hover:bg-slate-50 transition-colors fade-in">
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-700 font-semibold text-xs">
-                            ${doc.nome.substring(0,2).toUpperCase()}
-                        </div>
-                        <div>
-                            <p class="text-sm font-semibold text-slate-800">${doc.nome}</p>
-                            <p class="text-xs text-slate-400">ID: ${doc.id.substring(0,8)}...</p>
-                        </div>
+    tbody.innerHTML = docs.map((doc) => `
+        <tr class="hover:bg-slate-50 transition-colors fade-in">
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-700 font-semibold text-xs">
+                        ${doc.nome.substring(0,2).toUpperCase()}
                     </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-mono">${doc.cpf}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${getCategoryLabel(doc.categoria)}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${doc.data}</td>
-                <td class="px-6 py-4 whitespace-nowrap">${getStatusBadge(doc.status)}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-right">
-                    <div class="flex justify-end gap-1.5">
-                        <button onclick="window.abrirDetalhes('${doc.id}')" class="text-blue-600 bg-blue-50 p-2 rounded-lg" title="Ver Dados">
-                            <i data-lucide="eye" class="w-4 h-4"></i>
-                        </button>
+                    <div>
+                        <p class="text-sm font-semibold text-slate-800">${doc.nome}</p>
+                        <p class="text-xs text-slate-400">ID: ${doc.id.substring(0,8)}...</p>
                     </div>
-                </td>
-            </tr>
-        `).join('');
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-    }
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-mono">${doc.cpf}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${getCategoryLabel(doc.categoria)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${doc.data}</td>
+            <td class="px-6 py-4 whitespace-nowrap">${getStatusBadge(doc.status)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-right">
+                <button onclick="window.abrirDetalhes('${doc.id}')" class="text-blue-600 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition-colors" title="Ver Dados">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-// === MODAL DE DETALHES ===
+// =========================================================================
+// 7. SISTEMAS DE FILTRAGEM, BARRA DE PESQUISA E EXPORTAÇÃO
+// =========================================================================
+window.filterTable = function() {
+    const searchText = document.getElementById('searchInput')?.value.toLowerCase() || '';
+    const statusText = document.getElementById('statusFilter')?.value || '';
+    
+    filteredDocs = documents.filter(doc => {
+        const bateTexto = doc.nome.toLowerCase().includes(searchText) || doc.cpf.includes(searchText);
+        const bateStatus = statusText === '' || doc.status === statusText;
+        return bateTexto && bateStatus;
+    });
+    
+    renderTable(filteredDocs);
+    atualizarCards(filteredDocs);
+};
+
+window.resetFilters = function() {
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    if (searchInput) searchInput.value = '';
+    if (statusFilter) statusFilter.value = '';
+    filteredDocs = [...documents];
+    renderTable(filteredDocs);
+    atualizarCards(filteredDocs);
+};
+
+window.exportData = function() {
+    if (filteredDocs.length === 0) return showToast("Nenhum dado para exportar", "error");
+    
+    let csv = "\uFEFFNome;CPF;Data;Status;Anexos;Email\n";
+    filteredDocs.forEach(d => {
+        csv += `"${d.nome}";"${d.cpf}";"${d.data}";"${d.status}";"${d.anexos}";"${d.email}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "relatorio_funcionarios.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+window.toggleSidebar = function() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (sidebar && overlay) {
+        sidebar.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+    }
+};
+
+// =========================================================================
+// 8. CONTROLO DO MODAL DE DETALHES E TOASTS
+// =========================================================================
 window.abrirDetalhes = function(id) {
     const doc = documents.find(d => d.id === id);
     if (!doc) return;
@@ -223,13 +339,25 @@ window.abrirDetalhes = function(id) {
         filesList.innerHTML = '<p class="text-sm text-slate-400">Nenhum arquivo anexado.</p>';
     }
 
+    const actionButtons = document.getElementById('modalActionButtons');
+    if (actionButtons) {
+        if (doc.status === 'pendente') {
+            actionButtons.innerHTML = `
+                <button onclick="window.reprovarCadastro('${doc.id}', '${doc.email}', '${doc.nome}')" class="px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors">Reprovar</button>
+                <button onclick="window.aprovarCadastro('${doc.id}', '${doc.email}', '${doc.nome}')" class="px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-accent-600 hover:bg-accent-700 transition-colors">Aprovar Prontuário</button>
+            `;
+        } else {
+            actionButtons.innerHTML = '';
+        }
+    }
+
     const modal = document.getElementById('detailModal');
     if(modal) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
     }
     if (typeof lucide !== 'undefined') lucide.createIcons();
-}
+};
 
 window.closeDetailModal = function() {
     const modal = document.getElementById('detailModal');
@@ -238,7 +366,7 @@ window.closeDetailModal = function() {
         modal.classList.remove('flex');
     }
     currentDetailId = null;
-}
+};
 
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
