@@ -6,8 +6,9 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstati
 
 // === VARIÁVEL GLOBAL PARA CONTROLE DE ATUALIZAÇÃO ===
 let idDocumentoExistente = null; 
+let usuarioLogado = null;
 
-// === CONFIGURAÇÃO ===
+// === CONFIGURAÇÃO DO FIREBASE ===
 const firebaseConfig = {
     apiKey: "AIzaSyCgDbwdOmhyFe4HflcYcOaEX8LXrF3k1U0",
     authDomain: "cadfuncionario-13bac.firebaseapp.com",
@@ -24,7 +25,6 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 const provider = new GoogleAuthProvider();
-let usuarioLogado = null;
 
 
 // === FUNÇÕES DE INTERFACE (UI) ===
@@ -78,7 +78,7 @@ function updateProgress() {
     if(progressText) progressText.textContent = pct + '%';
 }
 
-// Configura os listeners de progresso
+// Configura os listeners de progresso para os campos fixos
 const camposParaOuvir = ['nome', 'nif', 'endereco', 'telefone', 'email_particular', 'estado_civil', 'ano_medio'];
 camposParaOuvir.forEach(id => {
     const el = document.getElementById(id);
@@ -86,30 +86,30 @@ camposParaOuvir.forEach(id => {
 });
 document.querySelectorAll('input[name="tem_filhos"]').forEach(r => r.addEventListener('change', updateProgress));
 
-// === LÓGICA DE LOGIN (COM BLOQUEIO DE DUPLICADOS) ===
+
+// === LÓGICA DE LOGIN (COM BLOQUEIO DE DUPLICADOS E SUPORTE A RECUSA) ===
 const btnLogin = document.getElementById('btn-login');
 if(btnLogin) {
     btnLogin.addEventListener('click', () => {
         signInWithPopup(auth, provider).then(async (result) => {
             usuarioLogado = result.user;
             
-            // Busca se este funcionário já tem um prontuário salvo
+            // Busca se este funcionário já tem prontuários salvos
             const q = query(collection(db, "Funcionarios"), where("emailFuncionario", "==", usuarioLogado.email));
             const querySnapshot = await getDocs(q);
             
             if (!querySnapshot.empty) {
-                // CORREÇÃO APLICADA: Transforma os documentos em uma lista e ordena pela data mais recente
+                // Transforma em array e ordena pela dataPreenchimento mais recente para evitar conflito com testes antigos
                 const registros = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 registros.sort((a, b) => new Date(b.dataPreenchimento) - new Date(a.dataPreenchimento));
                 
-                // Captura apenas o registro mais recente atualizado pelo sistema
                 const dados = registros[0]; 
-                idDocumentoExistente = dados.id; // Garante que o ID correto será mantido para futuras atualizações
-            
+                idDocumentoExistente = dados.id; // Vincula o ID correto para a atualização futura
+
                 if (dados.status === "em_analise" || dados.status === "aprovado") {
-                    // JÁ CADASTROU E ESTÁ TUDO CERTO! Trava o ecrã com mensagem visual.
+                    // JÁ CADASTROU E ESTÁ EM PROCESSAMENTO: Bloqueia a tela
                     document.getElementById('area-login').innerHTML = `
-                        <div class="bg-green-50 text-green-700 p-8 rounded-2xl border border-green-200 fade-in">
+                        <div class="bg-green-50 text-green-700 p-8 rounded-2xl border border-green-200 fade-in text-center max-w-md mx-auto">
                             <i data-lucide="check-circle" class="w-12 h-12 mx-auto mb-4 text-green-500"></i>
                             <h2 class="text-xl font-bold mb-2">Prontuário em processamento</h2>
                             <p class="text-sm">Status atual: <span class="font-bold uppercase">${dados.status}</span></p>
@@ -119,16 +119,24 @@ if(btnLogin) {
                     if (typeof lucide !== 'undefined') lucide.createIcons();
                 } 
                 else if (dados.status === "recusado") {
-                    // FOI RECUSADO: Libera o formulário e avisa o motivo
+                    // FOI RECUSADO: Devolve o acesso ao formulário e aponta o erro
                     document.getElementById('area-login').classList.add('hidden');
                     document.getElementById('area-formulario').classList.remove('hidden');
                     document.getElementById('nome-usuario').innerText = usuarioLogado.displayName;
                     
-                    alert(`Atenção: Sua documentação anterior foi recusada.\n\nMotivo: "${dados.motivoRecusa}"\n\nPor favor, corrija os campos e envie novamente.`);
+                    alert(`Atenção: Sua documentação anterior foi recusada pelo RH.\n\nMotivo: "${dados.motivoRecusa}"\n\nPor favor, corrija os campos necessários e envie novamente.`);
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }
+                else {
+                    // CASO SEJA UM REGISTRO LEGADO (sem status definido), abre para atualização preventiva
+                    document.getElementById('area-login').classList.add('hidden');
+                    document.getElementById('area-formulario').classList.remove('hidden');
+                    document.getElementById('nome-usuario').innerText = usuarioLogado.displayName;
+                    showToast('Documento anterior detectado. Envie para atualizar os status.', 'info');
                     if (typeof lucide !== 'undefined') lucide.createIcons();
                 }
             } else {
-                // PRIMEIRA VEZ DO FUNCIONÁRIO
+                // PRIMEIRA VEZ DO FUNCIONÁRIO NO SISTEMA
                 document.getElementById('area-login').classList.add('hidden');
                 document.getElementById('area-formulario').classList.remove('hidden');
                 document.getElementById('nome-usuario').innerText = usuarioLogado.displayName;
@@ -149,13 +157,13 @@ if(btnLogout) {
             document.getElementById('area-formulario').classList.add('hidden');
             document.getElementById('area-login').classList.remove('hidden');
             showToast('Sessão encerrada', 'info');
-            setTimeout(() => window.location.reload(), 1000); // Recarrega a página para limpar o HTML
+            setTimeout(() => window.location.reload(), 1000);
         });
     });
 }
 
 
-// === GERAÇÃO DINÂMICA DE CAMPOS ===
+// === GERAÇÃO DINÂMICA DE CAMPOS DE TEXTO (Métodos globais via Window) ===
 const inputClasses = 'w-full px-3.5 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white';
 const labelClasses = 'block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider';
 const selectClasses = 'w-full px-3.5 py-2.5 rounded-lg border border-slate-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm text-slate-700 bg-slate-50/50 hover:bg-white appearance-none cursor-pointer';
@@ -340,10 +348,10 @@ window.addCurso = function () {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-// === SISTEMA DE ACUMULAÇÃO DE ARQUIVOS ===
+
+// === SISTEMA DE ACUMULAÇÃO DE ARQUIVOS (API DataTransfer para múltiplos uploads) ===
 const acumuladorArquivos = {
-    'file_diplomas': new DataTransfer(),
-    'file_filhos': new DataTransfer() 
+    'file_diplomas': new DataTransfer()
 };
 
 function configurarInputMultiplo(inputId) {
@@ -409,6 +417,8 @@ window.removerArquivoAcumulado = function(inputId, fileName) {
     }
 }
 
+
+// === DISPARO DO ONLOAD DA PÁGINA ===
 window.onload = () => {
     window.addGraduacao();
     window.addPos();
@@ -418,7 +428,8 @@ window.onload = () => {
     configurarInputMultiplo('file_diplomas');
 };
 
-// === LÓGICA DE UPLOAD NO STORAGE ===
+
+// === LÓGICA DE UPLOAD NO FIREBASE STORAGE ===
 async function uploadArquivo(file, pasta) {
     if (!file) return null;
     const caminho = `${pasta}/${usuarioLogado.email}/${Date.now()}_${file.name}`;
@@ -454,7 +465,7 @@ async function uploadArquivosDinamicos(seletor, pasta) {
 }
 
 
-// === SALVAR NO FIRESTORE ===
+// === PERSISTÊNCIA E GRAVAÇÃO NO FIRESTORE ===
 const btnSalvar = document.getElementById('btn-salvar');
 if(btnSalvar) {
     btnSalvar.addEventListener('click', async () => {
@@ -586,14 +597,14 @@ if(btnSalvar) {
                 arquivosAnexados: linksDocumentos
             };
 
-            // Atualizar documento existente ou Adicionar novo
+            // Condicional Inteligente: Atualiza se houver ID existente, senão adiciona do zero
             if (idDocumentoExistente) {
                 const docRef = doc(db, "Funcionarios", idDocumentoExistente);
                 await updateDoc(docRef, dadosProntuario);
-                showToast("Prontuário atualizado e reenviado!", 'success');
+                showToast("Prontuário atualizado e reenviado com sucesso!", 'success');
             } else {
                 const docRef = await addDoc(collection(db, "Funcionarios"), dadosProntuario);
-                idDocumentoExistente = docRef.id; // Guarda o ID gerado
+                idDocumentoExistente = docRef.id; 
                 showToast("Prontuário salvo com sucesso!", 'success');
             }
             
@@ -603,11 +614,11 @@ if(btnSalvar) {
             btnSalvar.classList.add('pulse-save');
             setTimeout(() => {
                 btnSalvar.classList.remove('pulse-save');
-                // Substitui a tela pelo aviso verde de sucesso
+                // Bloqueia e renderiza layout visual de sucesso imediato
                 document.getElementById('area-formulario').classList.add('hidden');
                 document.getElementById('area-login').classList.remove('hidden');
                 document.getElementById('area-login').innerHTML = `
-                    <div class="bg-green-50 text-green-700 p-8 rounded-2xl border border-green-200 fade-in">
+                    <div class="bg-green-50 text-green-700 p-8 rounded-2xl border border-green-200 fade-in text-center max-w-md mx-auto">
                         <i data-lucide="check-circle" class="w-12 h-12 mx-auto mb-4 text-green-500"></i>
                         <h2 class="text-xl font-bold mb-2">Prontuário enviado!</h2>
                         <p class="text-sm">Seus dados já estão em análise pelo RH. Obrigado!</p>
@@ -625,7 +636,8 @@ if(btnSalvar) {
     });
 }
 
-// === GERAÇÃO DOS ANEXOS DINÂMICOS (Filhos e Certificados) ===
+
+// === GERAÇÃO DOS INPUTS DE ARQUIVOS DINÂMICOS (Anexos da Seção 7 e 8) ===
 document.addEventListener('DOMContentLoaded', () => {
     // LÓGICA PARA DOCUMENTOS DE FILHOS
     const btnAddDocFilho = document.getElementById('btn_add_doc_filho');
@@ -650,7 +662,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if(window.lucide) lucide.createIcons({ root: div });
         });
-        btnAddDocFilho.click(); // Inicia com um visível
+        btnAddDocFilho.click(); 
     }
 
     // LÓGICA PARA CERTIFICADOS
@@ -676,6 +688,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if(window.lucide) lucide.createIcons({ root: div });
         });
-        btnAddCertificadoDoc.click(); // Inicia com um visível
+        btnAddCertificadoDoc.click(); 
     }
 });
