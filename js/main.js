@@ -1,8 +1,11 @@
 // === IMPORTAÇÕES DO FIREBASE ===
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, where, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+// === VARIÁVEL GLOBAL PARA CONTROLE DE ATUALIZAÇÃO ===
+let idDocumentoExistente = null; 
 
 // === CONFIGURAÇÃO ===
 const firebaseConfig = {
@@ -90,29 +93,48 @@ if(btnLogin) {
         signInWithPopup(auth, provider).then(async (result) => {
             usuarioLogado = result.user;
             
-            // VERIFICA SE O UTILIZADOR JÁ TEM REGISTO
+            // Busca se este funcionário já tem um prontuário salvo
             const q = query(collection(db, "Funcionarios"), where("emailFuncionario", "==", usuarioLogado.email));
             const querySnapshot = await getDocs(q);
             
             if (!querySnapshot.empty) {
-                // JÁ CADASTROU! Trava o ecrã.
-                document.getElementById('area-login').innerHTML = `
-                    <div class="bg-green-50 text-green-700 p-8 rounded-2xl border border-green-200">
-                        <i data-lucide="check-circle" class="w-12 h-12 mx-auto mb-4"></i>
-                        <h2 class="text-xl font-bold mb-2">Prontuário já enviado!</h2>
-                        <p class="text-sm">Os seus dados já estão em análise pelos Recursos Humanos. Obrigado!</p>
-                    </div>
-                `;
+                // CORREÇÃO APLICADA: Transforma os documentos em uma lista e ordena pela data mais recente
+                const registros = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                registros.sort((a, b) => new Date(b.dataPreenchimento) - new Date(a.dataPreenchimento));
+                
+                // Captura apenas o registro mais recente atualizado pelo sistema
+                const dados = registros[0]; 
+                idDocumentoExistente = dados.id; // Garante que o ID correto será mantido para futuras atualizações
+            
+                if (dados.status === "em_analise" || dados.status === "aprovado") {
+                    // JÁ CADASTROU E ESTÁ TUDO CERTO! Trava o ecrã com mensagem visual.
+                    document.getElementById('area-login').innerHTML = `
+                        <div class="bg-green-50 text-green-700 p-8 rounded-2xl border border-green-200 fade-in">
+                            <i data-lucide="check-circle" class="w-12 h-12 mx-auto mb-4 text-green-500"></i>
+                            <h2 class="text-xl font-bold mb-2">Prontuário em processamento</h2>
+                            <p class="text-sm">Status atual: <span class="font-bold uppercase">${dados.status}</span></p>
+                            <p class="text-sm mt-2">Aguarde a validação pelos Recursos Humanos.</p>
+                        </div>
+                    `;
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                } 
+                else if (dados.status === "recusado") {
+                    // FOI RECUSADO: Libera o formulário e avisa o motivo
+                    document.getElementById('area-login').classList.add('hidden');
+                    document.getElementById('area-formulario').classList.remove('hidden');
+                    document.getElementById('nome-usuario').innerText = usuarioLogado.displayName;
+                    
+                    alert(`Atenção: Sua documentação anterior foi recusada.\n\nMotivo: "${dados.motivoRecusa}"\n\nPor favor, corrija os campos e envie novamente.`);
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }
+            } else {
+                // PRIMEIRA VEZ DO FUNCIONÁRIO
+                document.getElementById('area-login').classList.add('hidden');
+                document.getElementById('area-formulario').classList.remove('hidden');
+                document.getElementById('nome-usuario').innerText = usuarioLogado.displayName;
+                showToast('Bem-vindo(a), ' + usuarioLogado.displayName + '!', 'info');
                 if (typeof lucide !== 'undefined') lucide.createIcons();
-                return; // Pára o código aqui, não mostra o formulário.
             }
-
-            // SE NÃO TEM REGISTO, LIBERTA O FORMULÁRIO:
-            document.getElementById('area-login').classList.add('hidden');
-            document.getElementById('area-formulario').classList.remove('hidden');
-            document.getElementById('nome-usuario').innerText = usuarioLogado.displayName;
-            showToast('Bem-vindo(a), ' + usuarioLogado.displayName + '!', 'info');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
         }).catch((error) => {
             showToast("Erro ao fazer login: " + error.message, 'error');
         });
@@ -127,6 +149,7 @@ if(btnLogout) {
             document.getElementById('area-formulario').classList.add('hidden');
             document.getElementById('area-login').classList.remove('hidden');
             showToast('Sessão encerrada', 'info');
+            setTimeout(() => window.location.reload(), 1000); // Recarrega a página para limpar o HTML
         });
     });
 }
@@ -538,8 +561,9 @@ if(btnSalvar) {
 
             const dadosProntuario = {
                 emailFuncionario: usuarioLogado.email,
-                statusCadastro: "pendente",
                 dataPreenchimento: new Date().toISOString(),
+                status: "em_analise", 
+                motivoRecusa: "",     
                 dadosPessoais: {
                     nome: nome,
                     nif: nif,
@@ -562,14 +586,35 @@ if(btnSalvar) {
                 arquivosAnexados: linksDocumentos
             };
 
-            await addDoc(collection(db, "Funcionarios"), dadosProntuario);
+            // Atualizar documento existente ou Adicionar novo
+            if (idDocumentoExistente) {
+                const docRef = doc(db, "Funcionarios", idDocumentoExistente);
+                await updateDoc(docRef, dadosProntuario);
+                showToast("Prontuário atualizado e reenviado!", 'success');
+            } else {
+                const docRef = await addDoc(collection(db, "Funcionarios"), dadosProntuario);
+                idDocumentoExistente = docRef.id; // Guarda o ID gerado
+                showToast("Prontuário salvo com sucesso!", 'success');
+            }
             
             document.getElementById('loading-overlay').classList.add('hidden');
             document.getElementById('loading-overlay').classList.remove('flex');
-            showToast("Prontuário salvo com sucesso!", 'success');
 
             btnSalvar.classList.add('pulse-save');
-            setTimeout(() => btnSalvar.classList.remove('pulse-save'), 600);
+            setTimeout(() => {
+                btnSalvar.classList.remove('pulse-save');
+                // Substitui a tela pelo aviso verde de sucesso
+                document.getElementById('area-formulario').classList.add('hidden');
+                document.getElementById('area-login').classList.remove('hidden');
+                document.getElementById('area-login').innerHTML = `
+                    <div class="bg-green-50 text-green-700 p-8 rounded-2xl border border-green-200 fade-in">
+                        <i data-lucide="check-circle" class="w-12 h-12 mx-auto mb-4 text-green-500"></i>
+                        <h2 class="text-xl font-bold mb-2">Prontuário enviado!</h2>
+                        <p class="text-sm">Seus dados já estão em análise pelo RH. Obrigado!</p>
+                    </div>
+                `;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }, 600);
 
         } catch (error) {
             console.error("Erro ao salvar: ", error);

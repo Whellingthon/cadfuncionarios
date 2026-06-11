@@ -394,3 +394,25 @@ function atualizarCards(docs) {
     if (elPendentes) elPendentes.textContent = pendentes;
     if (elRejeitados) elRejeitados.textContent = rejeitados;
 }
+import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+async function recusarDocumentacao(docId) {
+    const motivo = prompt("Qual o motivo da recusa? (Ex: Imagem do CPF está ilegível)");
+    
+    if (!motivo) return; // Cancela se não digitar nada
+
+    try {
+        const docRef = doc(db, "Funcionarios", docId);
+        
+        // Atualiza apenas o status e o motivo no banco
+        await updateDoc(docRef, {
+            status: "recusado",
+            motivoRecusa: motivo
+        });
+
+        alert("Documentação recusada com sucesso! O formulário foi liberado para o usuário.");
+        // Aqui você pode recarregar a lista do admin para atualizar a tela
+    } catch (error) {
+        console.error("Erro ao recusar documentação: ", error);
+        alert("Erro ao processar a recusa.");
+    }
+}
