@@ -1,9 +1,9 @@
 // =========================================================================
-// 1. IMPORTAÇÕES DO FIREBASE (Consolidadas e sem duplicados)
+// 1. IMPORTAÇÕES DO FIREBASE
 // =========================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, query, orderBy, where, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // =========================================================================
 // 2. CONFIGURAÇÃO E CREDENCIAIS DO FIREBASE
@@ -43,7 +43,6 @@ onAuthStateChanged(auth, (user) => {
         if (ADMIN_EMAILS.includes(user.email)) {
             console.log("Acesso Liberado para:", user.email);
             
-            // Oculta a área de login se ela existir no HTML
             const areaLogin = document.getElementById('area-login-admin');
             if (areaLogin) areaLogin.classList.add('hidden');
             
@@ -74,7 +73,6 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// Funções de Autenticação globais
 window.loginAdmin = function() {
     signInWithPopup(auth, provider).catch(error => {
         console.error("Erro no login:", error);
@@ -162,7 +160,8 @@ async function carregarDadosDoBanco() {
             documents.push({
                 id: id,
                 nome: dados.dadosPessoais?.nome || 'Nome não informado',
-                cpf: dados.dadosPessoais?.nif || 'NIF não informado',
+                // AQUI ESTÁ A CORREÇÃO DO CPF QUE COMBINAMOS:
+                cpf: dados.dadosPessoais?.cpf || dados.dadosPessoais?.nif || 'CPF não informado',
                 categoria: 'registro', 
                 status: dados.statusCadastro || 'pendente', 
                 email: dados.emailFuncionario || '',
@@ -203,40 +202,42 @@ function getCategoryLabel(cat) {
     return map[cat] || cat;
 }
 
-function renderTable(docs) {
+function renderTable(listaDeProntuarios) {
     const tbody = document.getElementById('tableBody');
     const emptyState = document.getElementById('emptyState');
     const countEl = document.getElementById('resultCount');
-    if (countEl) countEl.textContent = docs.length;
+    if (countEl) countEl.textContent = listaDeProntuarios.length;
 
     if (!tbody) return;
 
-    if (docs.length === 0) {
+    if (listaDeProntuarios.length === 0) {
         tbody.innerHTML = '';
         if(emptyState) emptyState.classList.remove('hidden');
         return;
     }
 
     if(emptyState) emptyState.classList.add('hidden');
-    tbody.innerHTML = docs.map((doc) => `
+    
+    // Variável alterada para 'prontuario' para evitar o conflito com o 'doc' do Firebase
+    tbody.innerHTML = listaDeProntuarios.map((prontuario) => `
         <tr class="hover:bg-slate-50 transition-colors fade-in">
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-700 font-semibold text-xs">
-                        ${doc.nome.substring(0,2).toUpperCase()}
+                        ${prontuario.nome.substring(0,2).toUpperCase()}
                     </div>
                     <div>
-                        <p class="text-sm font-semibold text-slate-800">${doc.nome}</p>
-                        <p class="text-xs text-slate-400">ID: ${doc.id.substring(0,8)}...</p>
+                        <p class="text-sm font-semibold text-slate-800">${prontuario.nome}</p>
+                        <p class="text-xs text-slate-400">ID: ${prontuario.id.substring(0,8)}...</p>
                     </div>
                 </div>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-mono">${doc.cpf}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${getCategoryLabel(doc.categoria)}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${doc.data}</td>
-            <td class="px-6 py-4 whitespace-nowrap">${getStatusBadge(doc.status)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-mono">${prontuario.cpf}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${getCategoryLabel(prontuario.categoria)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${prontuario.data}</td>
+            <td class="px-6 py-4 whitespace-nowrap">${getStatusBadge(prontuario.status)}</td>
             <td class="px-6 py-4 whitespace-nowrap text-right">
-                <button onclick="window.abrirDetalhes('${doc.id}')" class="text-blue-600 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition-colors" title="Ver Dados">
+                <button onclick="window.abrirDetalhes('${prontuario.id}')" class="text-blue-600 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition-colors" title="Ver Dados">
                     <i data-lucide="eye" class="w-4 h-4"></i>
                 </button>
             </td>
@@ -252,9 +253,9 @@ window.filterTable = function() {
     const searchText = document.getElementById('searchInput')?.value.toLowerCase() || '';
     const statusText = document.getElementById('statusFilter')?.value || '';
     
-    filteredDocs = documents.filter(doc => {
-        const bateTexto = doc.nome.toLowerCase().includes(searchText) || doc.cpf.includes(searchText);
-        const bateStatus = statusText === '' || doc.status === statusText;
+    filteredDocs = documents.filter(pront => {
+        const bateTexto = pront.nome.toLowerCase().includes(searchText) || pront.cpf.includes(searchText);
+        const bateStatus = statusText === '' || pront.status === statusText;
         return bateTexto && bateStatus;
     });
     
@@ -304,22 +305,23 @@ window.toggleSidebar = function() {
 // 8. CONTROLO DO MODAL DE DETALHES E TOASTS
 // =========================================================================
 window.abrirDetalhes = function(id) {
-    const doc = documents.find(d => d.id === id);
-    if (!doc) return;
+    // Variável alterada para 'prontuario' para evitar o conflito com o 'doc' do Firebase
+    const prontuario = documents.find(d => d.id === id);
+    if (!prontuario) return;
 
     currentDetailId = id;
-    document.getElementById('modalName').textContent = doc.nome;
-    document.getElementById('modalCategory').textContent = getCategoryLabel(doc.categoria);
-    document.getElementById('modalCpf').textContent = doc.cpf;
-    document.getElementById('modalDate').textContent = doc.data;
-    document.getElementById('modalStatus').innerHTML = getStatusBadge(doc.status);
-    document.getElementById('modalAttachments').textContent = `${doc.anexos} arquivo(s)`;
-    document.getElementById('modalNotes').textContent = doc.notas;
+    document.getElementById('modalName').textContent = prontuario.nome;
+    document.getElementById('modalCategory').textContent = getCategoryLabel(prontuario.categoria);
+    document.getElementById('modalCpf').textContent = prontuario.cpf;
+    document.getElementById('modalDate').textContent = prontuario.data;
+    document.getElementById('modalStatus').innerHTML = getStatusBadge(prontuario.status);
+    document.getElementById('modalAttachments').textContent = `${prontuario.anexos} arquivo(s)`;
+    document.getElementById('modalNotes').textContent = prontuario.notas;
 
     const filesList = document.getElementById('modalFilesList');
     
-    if(doc.arquivos.length > 0) {
-        filesList.innerHTML = doc.arquivos.map((f) => `
+    if(prontuario.arquivos.length > 0) {
+        filesList.innerHTML = prontuario.arquivos.map((f) => `
             <div class="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-3 hover:bg-slate-100 transition-colors mb-2">
                 <div class="flex items-center gap-3 w-3/4">
                     <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
@@ -341,10 +343,10 @@ window.abrirDetalhes = function(id) {
 
     const actionButtons = document.getElementById('modalActionButtons');
     if (actionButtons) {
-        if (doc.status === 'pendente') {
+        if (prontuario.status === 'pendente') {
             actionButtons.innerHTML = `
-                <button onclick="window.reprovarCadastro('${doc.id}', '${doc.email}', '${doc.nome}')" class="px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors">Reprovar</button>
-                <button onclick="window.aprovarCadastro('${doc.id}', '${doc.email}', '${doc.nome}')" class="px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-accent-600 hover:bg-accent-700 transition-colors">Aprovar Prontuário</button>
+                <button onclick="window.reprovarCadastro('${prontuario.id}', '${prontuario.email}', '${prontuario.nome}')" class="px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors">Reprovar</button>
+                <button onclick="window.aprovarCadastro('${prontuario.id}', '${prontuario.email}', '${prontuario.nome}')" class="px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-accent-600 hover:bg-accent-700 transition-colors">Aprovar Prontuário</button>
             `;
         } else {
             actionButtons.innerHTML = '';
@@ -378,11 +380,11 @@ function showToast(message, type = 'success') {
     }
 }
 
-function atualizarCards(docs) {
-    const total = docs.length;
-    const aprovados = docs.filter(d => d.status === 'aprovado').length;
-    const pendentes = docs.filter(d => d.status === 'pendente').length;
-    const rejeitados = docs.filter(d => d.status === 'rejeitado').length;
+function atualizarCards(listaDeProntuarios) {
+    const total = listaDeProntuarios.length;
+    const aprovados = listaDeProntuarios.filter(d => d.status === 'aprovado').length;
+    const pendentes = listaDeProntuarios.filter(d => d.status === 'pendente').length;
+    const rejeitados = listaDeProntuarios.filter(d => d.status === 'rejeitado').length;
 
     const elTotal = document.getElementById('card-total');
     const elAprovados = document.getElementById('card-aprovados');
@@ -393,26 +395,4 @@ function atualizarCards(docs) {
     if (elAprovados) elAprovados.textContent = aprovados;
     if (elPendentes) elPendentes.textContent = pendentes;
     if (elRejeitados) elRejeitados.textContent = rejeitados;
-}
-import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-async function recusarDocumentacao(docId) {
-    const motivo = prompt("Qual o motivo da recusa? (Ex: Imagem do CPF está ilegível)");
-    
-    if (!motivo) return; // Cancela se não digitar nada
-
-    try {
-        const docRef = doc(db, "Funcionarios", docId);
-        
-        // Atualiza apenas o status e o motivo no banco
-        await updateDoc(docRef, {
-            status: "recusado",
-            motivoRecusa: motivo
-        });
-
-        alert("Documentação recusada com sucesso! O formulário foi liberado para o usuário.");
-        // Aqui você pode recarregar a lista do admin para atualizar a tela
-    } catch (error) {
-        console.error("Erro ao recusar documentação: ", error);
-        alert("Erro ao processar a recusa.");
-    }
 }
