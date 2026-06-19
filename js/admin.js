@@ -36,38 +36,31 @@ let filteredDocs = [];
 let currentDetailId = null;
 
 // =========================================================================
-// 3. CATRACA DE AUTENTICAÇÃO (Muda os nomes na tela dinamicamente)
+// 3. CATRACA DE AUTENTICAÇÃO
 // =========================================================================
 onAuthStateChanged(auth, (user) => {
     if (user) {
         if (ADMIN_EMAILS.includes(user.email)) {
-            console.log("Acesso Liberado para:", user.email);
-            
             const areaLogin = document.getElementById('area-login-admin');
             if (areaLogin) areaLogin.classList.add('hidden');
             
-            // ATUALIZAÇÃO DOS CAMPOS DE UTILIZADOR NA TELA
             const nomeCompleto = user.displayName || "Administrador";
             const iniciais = nomeCompleto.substring(0, 2).toUpperCase();
             
             const elSidebarName = document.getElementById('sidebar-user-name');
             const elSidebarInitials = document.getElementById('sidebar-user-initials');
             const elSidebarEmail = document.getElementById('sidebar-user-email');
-            const elFooterName = document.getElementById('footer-user-name');
             
             if (elSidebarName) elSidebarName.textContent = nomeCompleto;
             if (elSidebarInitials) elSidebarInitials.textContent = iniciais;
             if (elSidebarEmail) elSidebarEmail.textContent = user.email;
-            if (elFooterName) elFooterName.textContent = nomeCompleto;
 
-            // Puxa os dados reais do Firestore
             carregarDadosDoBanco();
         } else {
             showToast("Acesso Negado: O seu e-mail não é administrador.", "error");
             signOut(auth); 
         }
     } else {
-        console.log("Aguardando login de administrador...");
         const areaLogin = document.getElementById('area-login-admin');
         if (areaLogin) areaLogin.classList.remove('hidden');
     }
@@ -75,7 +68,6 @@ onAuthStateChanged(auth, (user) => {
 
 window.loginAdmin = function() {
     signInWithPopup(auth, provider).catch(error => {
-        console.error("Erro no login:", error);
         showToast("Erro ao tentar fazer login", "error");
     });
 };
@@ -90,12 +82,15 @@ window.logoutAdmin = function() {
 };
 
 // =========================================================================
-// 4. MÁQUINA DE ESTADOS (Aprovar e Reprovar Prontuários)
+// 4. MÁQUINA DE ESTADOS (Aprovar e Reprovar) - ATUALIZADA
 // =========================================================================
 window.aprovarCadastro = async function(idFuncionario, emailFuncionario, nomeFuncionario) {
+    if(!confirm("Deseja APROVAR o prontuário deste funcionário?")) return;
+
     try {
         const docRef = doc(db, "Funcionarios", idFuncionario);
-        await updateDoc(docRef, { statusCadastro: "aprovado" });
+        // Atualiza a nomenclatura exata que o main.js lê
+        await updateDoc(docRef, { status: "aprovado", motivoRecusa: "" }); 
         
         showToast("Cadastro Aprovado com sucesso!", "success");
         carregarDadosDoBanco(); 
@@ -107,21 +102,25 @@ window.aprovarCadastro = async function(idFuncionario, emailFuncionario, nomeFun
         
     } catch (error) {
         showToast("Erro ao aprovar cadastro.", "error");
-        console.error(error);
     }
 };
 
 window.reprovarCadastro = async function(idFuncionario, emailFuncionario, nomeFuncionario) {
+    // Agora pedimos o motivo para o Admin e guardamos no banco para o funcionário ver
+    const motivo = prompt("Qual o motivo da recusa? (Isso aparecerá para o funcionário)");
+    if (!motivo) return; // Se cancelar, aborta a ação
+
     try {
         const docRef = doc(db, "Funcionarios", idFuncionario);
-        await updateDoc(docRef, { statusCadastro: "rejeitado" });
+        // Atualiza o status e salva o motivo
+        await updateDoc(docRef, { status: "recusado", motivoRecusa: motivo }); 
         
-        showToast("Cadastro Rejeitado com sucesso!", "success");
+        showToast("Cadastro Recusado com sucesso!", "success");
         carregarDadosDoBanco(); 
         closeDetailModal(); 
         
         const assunto = encodeURIComponent("Ajuste necessário no Prontuário - DocVault");
-        const mensagem = encodeURIComponent(`Olá ${nomeFuncionario},\n\nSeu prontuário foi analisado e precisamos que você revise ou reenvie algumas informações.\n\nAtenciosamente,\nEquipe DocVault`);
+        const mensagem = encodeURIComponent(`Olá ${nomeFuncionario},\n\nSeu prontuário foi analisado e precisamos que você revise o seguinte ponto:\n\n${motivo}\n\nAcesse o sistema para reenviar.\n\nAtenciosamente,\nEquipe DocVault`);
         window.open(`mailto:${emailFuncionario}?subject=${assunto}&body=${mensagem}`);
         
     } catch (error) {
@@ -160,10 +159,10 @@ async function carregarDadosDoBanco() {
             documents.push({
                 id: id,
                 nome: dados.dadosPessoais?.nome || 'Nome não informado',
-                // AQUI ESTÁ A CORREÇÃO DO CPF QUE COMBINAMOS:
                 cpf: dados.dadosPessoais?.cpf || dados.dadosPessoais?.nif || 'CPF não informado',
                 categoria: 'registro', 
-                status: dados.statusCadastro || 'pendente', 
+                // Alterado para ler a variável 'status' oficial
+                status: dados.status || 'em_analise', 
                 email: dados.emailFuncionario || '',
                 anexos: arquivosReais.length,
                 notas: `Email corporativo: ${dados.emailFuncionario || 'Não informado'}`,
@@ -186,12 +185,13 @@ async function carregarDadosDoBanco() {
 // 6. RENDERIZAÇÃO DA INTERFACE E COMPONENTES VISUAIS
 // =========================================================================
 function getStatusBadge(status) {
+    // Dicionário atualizado com a nomenclatura oficial
     const map = {
         aprovado: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500', label: 'Aprovado' },
-        pendente: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500', label: 'Pendente' },
-        rejeitado: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500', label: 'Rejeitado' },
+        em_analise: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500', label: 'Em Análise' },
+        recusado: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500', label: 'Recusado' },
     };
-    const s = map[status] || map.pendente;
+    const s = map[status] || map.em_analise;
     return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}">
         <span class="w-1.5 h-1.5 rounded-full ${s.dot}"></span>${s.label}
     </span>`;
@@ -218,7 +218,6 @@ function renderTable(listaDeProntuarios) {
 
     if(emptyState) emptyState.classList.add('hidden');
     
-    // Variável alterada para 'prontuario' para evitar o conflito com o 'doc' do Firebase
     tbody.innerHTML = listaDeProntuarios.map((prontuario) => `
         <tr class="hover:bg-slate-50 transition-colors fade-in">
             <td class="px-6 py-4 whitespace-nowrap">
@@ -247,7 +246,7 @@ function renderTable(listaDeProntuarios) {
 }
 
 // =========================================================================
-// 7. SISTEMAS DE FILTRAGEM, BARRA DE PESQUISA E EXPORTAÇÃO
+// 7. SISTEMAS DE FILTRAGEM E EXPORTAÇÃO
 // =========================================================================
 window.filterTable = function() {
     const searchText = document.getElementById('searchInput')?.value.toLowerCase() || '';
@@ -302,10 +301,9 @@ window.toggleSidebar = function() {
 };
 
 // =========================================================================
-// 8. CONTROLO DO MODAL DE DETALHES E TOASTS
+// 8. CONTROLO DO MODAL DE DETALHES
 // =========================================================================
 window.abrirDetalhes = function(id) {
-    // Variável alterada para 'prontuario' para evitar o conflito com o 'doc' do Firebase
     const prontuario = documents.find(d => d.id === id);
     if (!prontuario) return;
 
@@ -343,14 +341,16 @@ window.abrirDetalhes = function(id) {
 
     const actionButtons = document.getElementById('modalActionButtons');
     if (actionButtons) {
-        if (prontuario.status === 'pendente') {
-            actionButtons.innerHTML = `
-                <button onclick="window.reprovarCadastro('${prontuario.id}', '${prontuario.email}', '${prontuario.nome}')" class="px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors">Reprovar</button>
-                <button onclick="window.aprovarCadastro('${prontuario.id}', '${prontuario.email}', '${prontuario.nome}')" class="px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-accent-600 hover:bg-accent-700 transition-colors">Aprovar Prontuário</button>
-            `;
-        } else {
-            actionButtons.innerHTML = '';
-        }
+        // Agora os botões de ação ficam SEMPRE visíveis no modal.
+        // Assim, você tem total controle de aprovar/recusar a qualquer momento.
+        actionButtons.innerHTML = `
+            <button onclick="window.reprovarCadastro('${prontuario.id}', '${prontuario.email}', '${prontuario.nome}')" class="px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors border border-red-200">
+                Recusar Prontuário
+            </button>
+            <button onclick="window.aprovarCadastro('${prontuario.id}', '${prontuario.email}', '${prontuario.nome}')" class="px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors shadow-sm">
+                Aprovar Prontuário
+            </button>
+        `;
     }
 
     const modal = document.getElementById('detailModal');
@@ -382,9 +382,10 @@ function showToast(message, type = 'success') {
 
 function atualizarCards(listaDeProntuarios) {
     const total = listaDeProntuarios.length;
+    // Nomenclatura atualizada
     const aprovados = listaDeProntuarios.filter(d => d.status === 'aprovado').length;
-    const pendentes = listaDeProntuarios.filter(d => d.status === 'pendente').length;
-    const rejeitados = listaDeProntuarios.filter(d => d.status === 'rejeitado').length;
+    const pendentes = listaDeProntuarios.filter(d => d.status === 'em_analise').length;
+    const rejeitados = listaDeProntuarios.filter(d => d.status === 'recusado').length;
 
     const elTotal = document.getElementById('card-total');
     const elAprovados = document.getElementById('card-aprovados');
