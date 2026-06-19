@@ -159,9 +159,9 @@ async function carregarDadosDoBanco() {
             documents.push({
                 id: id,
                 nome: dados.dadosPessoais?.nome || 'Nome não informado',
-                cpf: dados.dadosPessoais?.cpf || dados.dadosPessoais?.nif || 'CPF não informado',
+                cpf: dados.dadosPessoais?.nif || 'NIF não informado', 
+                data: dataFormatada,
                 categoria: 'registro', 
-                // Alterado para ler a variável 'status' oficial
                 status: dados.status || 'em_analise', 
                 email: dados.emailFuncionario || '',
                 anexos: arquivosReais.length,
